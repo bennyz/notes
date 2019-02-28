@@ -25,3 +25,29 @@ Remove all dm devices for vg name
 ```
   dmsetup ls | grep my_vg | cut -f1 | xargs dmsetup remove
 ```
+
+
+## ip
+Remove all firecracker tap interfaces
+```
+  ip a | grep -oP 'fc-\d{1,2}-tap\d' | sudo xargs -L 1 ip link delete
+```
+
+## virtualization
+### libvirt
+Change default libvirt images location
+```
+  $ virsh pool-edit --pool <pool-name> # default is 'default'
+```
+Set directly:
+```
+  $ virsh pool-define-as --name default --type dir --target <path>
+```
+
+```
+  $ virsh pool-autostart default
+```
+
+```
+  $ virsh pool-start default
+```

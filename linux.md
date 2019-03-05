@@ -51,3 +51,21 @@ Set directly:
 ```
   $ virsh pool-start default
 ```
+
+## iscsi
+Login to target
+```
+  iscsiadm -m node -T <iqn> -p <portal_ip:port> -l
+```
+
+
+## ceph
+Mount cephFS
+```
+  mount -t ceph mon_ip:6789:/ <path> -o name=admin,secret=<key>
+```
+
+Remove all volumes from pool
+```
+  for i in `rados -p <pool_name> ls`; do echo $i; rados -p <pool_name> rm $i; done
+```

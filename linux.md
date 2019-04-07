@@ -1,4 +1,3 @@
-# General commands
 ## make
 preview make build process
 ```
@@ -68,4 +67,17 @@ Mount cephFS
 Remove all volumes from pool
 ```
   for i in `rados -p <pool_name> ls`; do echo $i; rados -p <pool_name> rm $i; done
+```
+
+
+## find
+Find directories with exactly two files in them
+```
+  find . -maxdepth 1 -type d -exec bash -c "echo -ne '{} '; ls '{}' | wc -l" \; | awk '$NF==2'
+```
+
+## general (unsorted)
+Read process's output
+```
+  cat /proc/<pid>/fd/1
 ```

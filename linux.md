@@ -51,6 +51,9 @@ Set directly:
   $ virsh pool-start default
 ```
 
+To remove a DHCP entry, remove from `/var/lib/libvirt/dnsmasq/virbr0.status`
+
+
 ## iscsi
 Login to target
 ```

@@ -61,6 +61,11 @@
   let tup = (500, 6.4, 1);
 
   let (x, y, z) = tup;
+
+  // accessing specific fields can be done by index
+  let five_hundred = tup.0;
+  let six_point_four = tup.1;
+  let one = tup.2;
 ```
 
 ```rust
@@ -77,8 +82,52 @@
 ## Structs
 
 ```rust
-  struct ticket {
+  struct Ticket {
     title: String,
     description: String
   }
+
+  // instantiate struct
+  let t = Ticket {
+    title: String::from("Hello"),
+    description: String::from("World"),
+  };
+
+  // mutate fields - entire struct has to be mutable
+  let mut t = Ticket {
+    title: String::from("Hello"),
+    description: String::from("World"),
+  }
+
+  t.title = String::from("Goodbye");
+
+  // when variable and field have the same name
+  // we can use the Field Init shorthand
+  fn create_ticket(title: String, description: String) -> Ticket {
+    Ticket {
+      title,
+      description,
+    }
+  }
+
+  // tuple struct - they are grouped by some context, but the fields
+  // do not have names
+  struct Color(i32, i32, i32);
+  struct Point(i32, i32, i32);
+
+  // `black` and `origin` look the same, but they are of different types
+  // they cannot be switched
+  let black = Color(0, 0, 0);
+  let origin = Point(0, 0, 0);
+
+  // specific values can be access by index
+  let r = black.0;
+  let g = black.1;
+  let b = black.2;
+
+  // Unit-Like struct
+  // these are empty struct, they are useful when no attributes are needed
+  // but you want to implement traits (similar to Go)
+  struct Person{}
 ```
+

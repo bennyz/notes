@@ -54,13 +54,13 @@
 
 ```rust
 
-    // tuple
-    let tup: (i32, f64, u8) = (500, 6.4, 1);
+  // tuple
+  let tup: (i32, f64, u8) = (500, 6.4, 1);
 
-    // destructuring
-    let tup = (500, 6.4, 1);
+  // destructuring
+  let tup = (500, 6.4, 1);
 
-    let (x, y, z) = tup;
+  let (x, y, z) = tup;
 ```
 
 ```rust
@@ -72,4 +72,13 @@
 
   // short initializtion
   let a = [3; 5]; // [3, 3, 3, 3, 3]
+```
+
+## Structs
+
+```rust
+  struct ticket {
+    title: String,
+    description: String
+  }
 ```

@@ -131,3 +131,101 @@
   struct Person{}
 ```
 
+## Functions
+```rust
+  // basic
+  fn main() {
+      println!("Hello, world!");
+
+      another_function();
+  }
+
+  fn another_function() {
+      println!("Another function.");
+  }
+
+  // receive parameters
+  fn another_function(x: i32) {
+    println!("The value of x is: {}", x);
+  }
+
+  // return values
+  fn five() -> i32 {
+    5 // implicit return - when implicit return is used, semi-colon should not be used either
+  }
+```
+
+## Control Flow
+
+### if-else
+```rust
+  let number = 3;
+
+  if number < 5 {
+    println!("true");
+  } else {
+    println!("false");
+  }
+```
+
+```rust
+  let condition = true;
+  let number = if condition {
+    5
+  } else {
+    6
+  }
+
+  println!("number: {}", number);
+```
+
+### Loops
+```rust
+  // infinite loop (similar to `for {}` in Go)
+  loop {
+    println!("again");
+  }
+
+  // returning values from loops:
+  let mut counter = 0;
+
+  let result = loop {
+    counter += 1;
+
+    if counter == 10 {
+      break counter * 2; // returns 20
+    }
+  };
+
+  println!("The result is {}", result);
+```
+
+```rust
+  let mut number = 3;
+
+  while number != 0 {
+    println!("{}!", number);
+
+    number -= 1;
+  }
+
+  println!("LIFTOFF!!!");
+```
+
+```rust
+  let a = [10, 20, 30, 40, 50];
+
+  for element in a.iter() {
+    println!("the value is: {}", element);
+  }
+```
+
+```rust
+fn main() {
+  for number in (1..4).rev() {
+    println!("{}!", number);
+  }
+
+  println!("LIFTOFF!!!");
+}
+```

@@ -128,7 +128,7 @@
   // Unit-Like struct
   // these are empty struct, they are useful when no attributes are needed
   // but you want to implement traits (similar to Go)
-  struct Person{}
+  struct Person;
 ```
 
 ## Functions
@@ -229,3 +229,166 @@ fn main() {
   println!("LIFTOFF!!!");
 }
 ```
+
+## Ownership
+
+Rust does not have garbage collection, however, it does not require to explicitly allocate and
+free memory. Instead, Rust uses the ownership system that is verified in compile time.
+
+* Each value in Rust has a variable that’s called its owner.
+* There can only be one owner at a time.
+* When the owner goes out of scope, the value will be dropped.
+
+```rust
+  {                      // s is not valid here, it’s not yet declared
+    let s = "hello";   // s is valid from this point forward
+
+    // do stuff with s
+  }                      // this scope is now over, and s is no longer valid
+```
+
+*s* becomes valid when we come into scope and becomes invalid as we leave.
+A *drop* function is implicitly called at the end of the block, and this is
+where Rust automatically frees all the allocated memory for us.
+
+### Stack and heap
+The types covered in `Data Types` are allocated on the stack (they are fixed size).
+Ownership applies to values allocated on the heap - unknown size and growable.
+
+The computer stack frame (within the context of a function) is random access, suppose we have the following allocations:
+
+```rust
+  let x = 8;
+  let y = 7;
+
+```
+
+The stack frame will look roughly like this:
+<pre>
+<code>
+ -----
+ | 8 |
+ -----
+ | 7 |
+ -----
+</code>
+</pre>
+
+Since we know the size of each value (i32 by default) and we know where the stack starts
+we can easily "jump" to each value using *start_offset + data_type_size + index*
+
+### String
+
+```rust
+  // This is a string literal (type *&'static str*), it is immutable and is known ahead of time.
+  // It is compiled in the binary, similar to *final String* in Java.
+  let s = "string"
+
+  // This creats a *String* from a string literal, it is *mutable*, allocated on the heap, and *owned*
+  let s = String::from("string");
+
+  // It can be mutated the following way
+  let mut s = String::from("string");
+  s.push_str(" string"); // "string string"
+```
+
+When we call `String::from` we request memory from the OS.
+But we also need to free the memory, unlike garbage collected languages, but Rust does not require
+us to explicitly free, unlike unmanaged languages.
+
+```rust
+{ // We go into scope
+  let s = String::from("string");
+} // The scope is over and `s` is dropped, it can no longer be used!
+```
+
+The memory we allocated for `s` is released once we go out of scope, without us doing anything explicit.
+```rust
+  // We push to 5's onto the stack and that is great
+  let x = 5;
+  let y = x;
+```
+
+```rust
+{
+  // We will not get two "hello" strings! Rust does not perform deep copy
+  let s1 = String::from("he");
+  let s2 = s1;
+}
+```
+
+A *String* is made up like this:
+<pre>
+<code>
+------------       -------------
+|name|value|       |index|value|
+------------       -------------
+|ptr | ----------->| 0   | h   |
+------------       -------------
+|len | 2   |       | 1   | e   |
+------------       -------------
+|cap | 2   |
+------------
+</code>
+</pre>
+
+*ptr* is a pointer to the address of the first character
+*len* is the amount of memory used by *s1*
+*cap* is how much it can grow without an extra allocation
+
+When *s1* is assigned to *s2* we get another structure, similar to the one on the left, only for *s2*.
+The pointer and the metadata are copied, but no the data pointed by the variable!
+
+Since *drop* is called at the end of the block, Rust will attempt to free s1 and then s2, but since the they
+have a pointer to the same location on the heap, it might free the same memory area twice (*double free*)!
+This leads to undefined behavior which can cause data corruption and security issues.
+
+Luckily, Rust protects us from such atrocities, so instead of copying the pointer along with the metadata,
+Rust will *move* the data from *s1* to *s2*, meaning *s1* is no longer valid
+
+```rust
+{
+  // We will not get two "hello" strings!
+  let s1 = String::from("he");
+  let s2 = s1;
+}
+```
+This will fail with a compilation error:
+<pre>
+move occurs because `s1` has type `std::string::String`, which does
+  not implement the `Copy` trait
+</pre>
+
+So, in other words, Rust does no perform a "shallow copy", but rather, it performs a *move* operation.
+
+If we do want a deep copy we can use *clone*:
+```rust
+let s1 = String::from("hello");
+let s2 = s1.clone();
+
+println!("s1 = {}, s2 = {}", s1, s2);
+```
+
+Rust has a *Copy* trait the we can implement for types, but it won't let derive it if the type has implmented *Drop*
+(because it manages memory on its own) as well (heap allocated)
+
+```rust
+  #[derive(Debug, Copy, Clone)]
+  struct Foo;
+
+  let x = Foo;
+
+  // since Foo derives Copy, y is a copy of x!
+  let y = x;
+
+
+  // No derive
+  struct Foo;
+
+  let x = Foo;
+
+  // x has moved into y and is no longer valid after the next line!
+  let y = x;
+
+```
+

@@ -332,11 +332,11 @@ A *String* is made up like this:
 </code>
 </pre>
 
-*ptr* is a pointer to the address of the first character
-*len* is the amount of memory used by *s1*
-*cap* is how much it can grow without an extra allocation
+`ptr` is a pointer to the address of the first character
+`len` is the amount of memory used by `s1`
+`cap` is how much it can grow without an extra allocation
 
-When *s1* is assigned to *s2* we get another structure, similar to the one on the left, only for *s2*.
+When `s1` is assigned to `s2` we get another structure, similar to the one on the left, only for `s2`.
 The pointer and the metadata are copied, but no the data pointed by the variable!
 
 Since *drop* is called at the end of the block, Rust will attempt to free s1 and then s2, but since the they
@@ -344,7 +344,7 @@ have a pointer to the same location on the heap, it might free the same memory a
 This leads to undefined behavior which can cause data corruption and security issues.
 
 Luckily, Rust protects us from such atrocities, so instead of copying the pointer along with the metadata,
-Rust will *move* the data from *s1* to *s2*, meaning *s1* is no longer valid
+Rust will *move* the data from `s1` to `s2`, meaning `s1` is no longer valid
 
 ```rust
 {
@@ -369,26 +369,26 @@ let s2 = s1.clone();
 println!("s1 = {}, s2 = {}", s1, s2);
 ```
 
-Rust has a *Copy* trait the we can implement for types, but it won't let derive it if the type has implmented *Drop*
+Rust has a `Copy` trait the we can implement for types, but it won't let derive it if the type has implmented `Drop`
 (because it manages memory on its own) as well (heap allocated)
 
 ```rust
-  #[derive(Debug, Copy, Clone)]
-  struct Foo;
+#[derive(Debug, Copy, Clone)]
+struct Foo;
 
-  let x = Foo;
+let x = Foo;
 
-  // since Foo derives Copy, y is a copy of x!
-  let y = x;
+// since Foo derives Copy, y is a copy of x!
+let y = x;
 
 
-  // No derive
-  struct Foo;
+// No derive
+struct Foo;
 
-  let x = Foo;
+let x = Foo;
 
-  // x has moved into y and is no longer valid after the next line!
-  let y = x;
+// x has moved into y and is no longer valid after the next line!
+let y = x;
 
 ```
 

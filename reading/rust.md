@@ -332,9 +332,9 @@ A *String* is made up like this:
 </code>
 </pre>
 
-`ptr` is a pointer to the address of the first character
-`len` is the amount of memory used by `s1`
-`cap` is how much it can grow without an extra allocation
+* `ptr` is a pointer to the address of the first character
+* `len` is the amount of memory used by `s1`
+* `cap` is how much it can grow without an extra allocation
 
 When `s1` is assigned to `s2` we get another structure, similar to the one on the left, only for `s2`.
 The pointer and the metadata are copied, but no the data pointed by the variable!

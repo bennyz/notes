@@ -392,3 +392,244 @@ let y = x;
 
 ```
 
+### Functions
+
+Passing a variable to a function will move or copy, similar to `=`
+
+```rust
+fn main() {
+    let s = String::from("hello");  // s comes into scope
+
+    takes_ownership(s);             // s's value moves into the function...
+                                    // ... and so is no longer valid here
+
+    let x = 5;                      // x comes into scope
+
+    makes_copy(x);                  // x would move into the function,
+                                    // but i32 is Copy, so it’s okay to still
+                                    // use x afterward
+
+} // Here, x goes out of scope, then s. But because s's value was moved, nothing
+  // special happens.
+
+fn takes_ownership(some_string: String) { // some_string comes into scope
+    println!("{}", some_string);
+} // Here, some_string goes out of scope and `drop` is called. The backing
+  // memory is freed.
+
+fn makes_copy(some_integer: i32) { // some_integer comes into scope
+    println!("{}", some_integer);
+} // Here, some_integer goes out of scope. Nothing special happens.
+```
+
+`s` is heap-allocated, so its value is moved and not copied, ownership is passed to
+`takes_ownership` and it frees it.
+
+`x` however is stack allocated, so a copy is performed and it is still acessible after
+the function call. It will be cleared after `main` completes.
+
+#### Return values
+
+Returning a value transfers the ownership to the caller.
+
+```rust
+fn main() {
+    let s1 = gives_ownership();         // gives_ownership moves its return
+                                        // value into s1
+
+    let s2 = String::from("hello");     // s2 comes into scope
+
+    let s3 = takes_and_gives_back(s2);  // s2 is moved into
+                                        // takes_and_gives_back, which also
+                                        // moves its return value into s3
+} // Here, s3 goes out of scope and is dropped. s2 goes out of scope but was
+  // moved, so nothing happens. s1 goes out of scope and is dropped.
+
+fn gives_ownership() -> String {             // gives_ownership will move its
+                                             // return value into the function
+                                             // that calls it
+
+    let some_string = String::from("hello"); // some_string comes into scope
+
+    some_string                              // some_string is returned and
+                                             // moves out to the calling
+                                             // function
+}
+
+// takes_and_gives_back will take a String and return one
+fn takes_and_gives_back(a_string: String) -> String { // a_string comes into
+                                                      // scope
+
+    a_string  // a_string is returned and moves out to the calling function
+}
+```
+
+The pattern here is assignment (`=`) moves the value (heap-allocated), returning gives
+ownership back. So passing a value to a function and returning is the current way for us
+to make changes, quite tedious.
+
+```rust
+fn main() {
+    let mut s = String::from("hello");
+    s = append(s);
+    println!("{}", s)
+}
+
+fn append(mut s: String) -> String {
+    s.push_str(", world");
+    return s;
+}
+```
+
+But... there is a better way
+
+#### References and Borrowing
+
+If we look at the last example and want to avoid returning, only making the change and returning
+the ownership back we can do:
+
+```rust
+fn main() {
+    let mut s = String::from("hello");
+    append(&mut s); // a mutable borrow
+    println!("{}", s)
+}
+
+fn append(s: &mut String) { // Borrows the value
+    s.push_str(", world"); // makes the change, but the original s is still the owner
+}
+```
+
+Since `append` has no ownership of `s`, the value is not dropped.
+
+
+Say we want to calculate the length of a string
+```rust
+fn main() {
+    let s1 = String::from("hello");
+
+    let (s2, len) = calculate_length(s1);
+
+    println!("The length of '{}' is {}.", s2, len);
+}
+
+fn calculate_length(s: String) -> (String, usize) {
+    let length = s.len(); // len() returns the length of a String
+
+    (s, length)
+}
+```
+
+If we don't return `s` in `calculate_length`, `s1` will be dropped and we will
+get a compilation error:
+```
+2 |     let s1 = String::from("hello");
+  |         -- move occurs because `s1` has type `std::string::String`, which does not implement the `Copy` trait
+3 |
+4 |     let len = calculate_length(s1);
+  |                                -- value moved here
+5 |
+6 |     println!("The length of '{}' is {}.", s1, len);
+  |                                           ^^ value borrowed here after move
+```
+
+So we must return `s`.
+
+However, we just learn how we can lend a value to function without giving up our rightful ownership of it.
+
+```rust
+fn main() {
+    let s1 = String::from("hello");
+
+    let len = calculate_length(&s1);
+
+    println!("The length of '{}' is {}.", s1, len);
+}
+
+fn calculate_length(s: &String) -> usize {
+    let length = s.len(); // len() returns the length of a String
+
+    length
+}
+
+This is an *immutable borrow*, unlike the `append` example.
+Essentially, `s` is a pointer to to `s1`.
+
+By default all borrows are *immutable* as are variables.
+`&` indicates an immutable borrow, while `&mut` indicates a mutable borrow (and lend).
+The caller will pass `&mut s` and callee will receive `&mut String`.
+
+However, unlike *immutable borrow*, we can only have __one__ mutable borrow in a scope.
+```rust
+let mut s = String::from("hello");
+
+let r1 = &mut s;
+let r2 = &mut s;
+
+println!("{}, {}", r1, r2);
+```
+
+Will fail with:
+```
+  |
+4 | let r1 = &mut s;
+  |          ------ first mutable borrow occurs here
+5 | let r2 = &mut s;
+  |          ^^^^^^ second mutable borrow occurs here
+6 |
+7 | println!("{}, {}", r1, r2);
+  |                    -- first borrow later used here
+```
+
+This is restriction is made to help us avoid data races.
+
+Mixing *mutable* and *immutable* borrows at the same time is also forbidden, as
+it is a data race as well (the immutable borrower might read stale data).
+
+We can do a *mutable* borrow once the *immutable* ones are no longer used (and vice-versa)
+```rust
+let mut s = String::from("hello");
+
+let r1 = &s; // no problem
+let r2 = &s; // no problem
+println!("{} and {}", r1, r2);
+// r1 and r2 are no longer used after this point
+
+let r3 = &mut s; // no problem
+println!("{}", r3);
+```
+
+if we were to use `r1` or `r2` again after the *mutable* borrow was introduced (in the same scope), the code would fail to compile.
+
+#### Dangling references
+
+```rust
+fn main() {
+    let reference_to_nothing = dangle();
+}
+
+fn dangle() -> &String {
+    let s = String::from("hello");
+
+    &s
+}
+```
+
+Here `dangle` returns a reference to a `String` `s` that is dropped at the end of the function.
+Thus `reference_to_nothing` will point to memory location that is no longer valid.
+
+However, Rust will not let us do anything like this and will fail with:
+```
+this function's return type contains a borrowed value, but there is
+  no value for it to be borrowed from
+```
+
+We can fix it by not using references, and just returning the value:
+```rust
+fn dangle() -> String {
+    let s = String::from("hello");
+
+    s
+}
+```
+We are effectively transferring the ownership of `s` the caller.

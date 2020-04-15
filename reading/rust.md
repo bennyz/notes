@@ -633,3 +633,183 @@ fn dangle() -> String {
 }
 ```
 We are effectively transferring the ownership of `s` the caller.
+
+### Slices
+
+Similar to primitives, slices do not have ownership. Slices let as references contiguous sequences of
+elements in a collection, rather than the entire collection.
+
+Suppose we want to write a program that returns the first word of a string, if there's no space in the
+string it will return the entire string.
+
+```rust
+fn first_word(s: &String) -> usize { // &String because we do not want ownership, usize because that's the type of a collection's index
+  let bytes = s.as_bytes();
+
+  for (i, &item) in bytes.iter().enumerate() { // enumerate returns a tuple of index and a reference to an item
+    if item == b' ' {
+      return i;
+    }
+  }
+
+  return s.len();
+}
+```
+
+We only return `usize` here, on its own without context. If there string were to change later the index we returned is
+no longer valid.
+```rust
+fn main() {
+    let mut s = String::from("hello world");
+
+    let word = first_word(&s); // word will get the value 5
+
+    s.clear(); // this empties the String, making it equal to ""
+
+    // word still has the value 5 here, but there's no more string that
+    // we could meaningfully use the value 5 with. word is now totally invalid!
+}
+```
+
+#### String slices
+
+Luckily, Rust provides us with a type that references a part of a `String`.
+```rust
+let s = String::from("hello world");
+
+let hello = &s[0..5];
+// Also works
+let hello = &s[..5];
+
+let world = &s[6..11];
+// Also works
+let hello = &s[6..];
+
+// The entire string - useful when we need to return an &str
+let entire = &s[..];
+```
+
+In the mamory it will look somethign like this
+```
+s
+------------         -------------
+|name|value|         |index|value|
+------------         -------------
+|ptr |  ------------>| 0   | h   |
+------------         -------------
+|len | 11  |         | 1   | e   |
+------------         -------------
+|cap | 11  |         | 2   | l   |
+------------         -------------
+                     | 3   | l   |
+                     -------------
+world                | 4   | o   |
+------------         -------------
+|name|value|         | 5   |     |
+------------         -------------
+|ptr |  ------------>| 6   | w   |
+------------         -------------
+|len | 5   |         | 7   | o   |
+------------         -------------
+                     | 8   | r   |
+                     -------------
+                     | 9   | l   |
+                     -------------
+                     | 10  | d   |
+                     -------------
+```
+
+In other words, the slices is references to a specific "starting cell" and length of how much we
+we continue after it.
+
+Going back to `first_word`, we can now do:
+```rust
+fn first_word(s: &String) -> &str { // A string slice is of type &str!
+  let bytes = s.as_bytes();
+
+  for (i, &item) in bytes.iter().enumerate() {
+    if item == b' ' {
+      return &s[..i]
+    }
+  }
+
+  return &s[..]
+}
+```
+
+Now the value is tied to the string we send (it is a reference), so it cannot change.
+```rust
+fn main() {
+    let mut s = String::from("hello world");
+
+    let word = first_word(&s);
+
+    s.clear(); // error!
+
+    println!("the first word is: {}", word);
+}
+```
+
+This will not compile with the error:
+```
+error[E0502]: cannot borrow `s` as mutable because it is also borrowed as immutable
+  --> src/main.rs:18:5
+   |
+16 |     let word = first_word(&s);
+   |                           -- immutable borrow occurs here
+17 |
+18 |     s.clear(); // error!
+   |     ^^^^^^^^^ mutable borrow occurs here
+19 |
+20 |     println!("the first word is: {}", word);
+   |                                       ---- immutable borrow later used here
+```
+
+`s.clear()` is a *mutable borrow* because `String#clear` receives `&mut self`. This is an operation
+on an object (instance of a struct) so it does not need to be specified (similar to Python).
+
+#### String literals are slices
+```rust
+let s = "Hello, world!";
+```
+`s` is an `&str`, as already stated earlier, this is compiled into the binary and cannot be changed.
+
+
+#### String Slices as Parameters
+
+In `first_word`, rather than taking in a &String, we can use an &str since we do not mutate the string
+at all.
+
+The signature would be:
+```rust
+fn first_word(s: &str) -> &str
+```
+And the usage would be:
+```rust
+fn main() {
+    let my_string = String::from("hello world");
+
+    // first_word works on slices of `String`s
+    let word = first_word(&my_string[..]);
+
+    let my_string_literal = "hello world";
+
+    // first_word works on slices of string literals
+    let word = first_word(&my_string_literal[..]);
+
+    // Because string literals *are* string slices already,
+    // this works too, without the slice syntax!
+    let word = first_word(my_string_literal);
+}
+```
+
+#### Other slices
+
+We can also have slices on types other than strings (a `String` slice is &str).
+An i32 vector would be &[i32]
+```rust
+let a = [1, 2, 3, 4, 5];
+
+let slice = &a[1..3];
+```
+`slice` has a reference to `2` and length of 2, so it will have the [2, 3]

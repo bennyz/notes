@@ -813,3 +813,76 @@ let a = [1, 2, 3, 4, 5];
 let slice = &a[1..3];
 ```
 `slice` has a reference to `2` and length of 2, so it will have the [2, 3]
+
+
+## Structs - continued
+
+```rust
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+fn main() {
+    let rect1 = Rectangle { width: 30, height: 50 };
+
+    println!(
+        "The area of the rectangle is {} square pixels.",
+        area(&rect1)
+    );
+}
+
+fn area(rectangle: &Rectangle) -> u32 {
+    rectangle.width * rectangle.height
+}
+```
+
+Here `rectangle` is an *immutable borrow* of `Rectangle`. We are not changing the struct so no need for a *mutable borrow*,
+and since `main()` uses it after function call, we cannot take owenrship of it.
+
+### Adding Functionality with Derived Traits
+
+If we want to print the struct using `println!` the following way:
+```rust
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+fn main() {
+    let rect1 = Rectangle { width: 30, height: 50 };
+
+    println!("rect1 is {}", rect1);
+}
+```
+
+This, however, would produce an error:
+```
+error[E0277]: `Rectangle` doesn't implement `std::fmt::Display`
+```
+
+For this to work we need derive the `Debug` trait and use `{:?}` instead of `{}`
+
+```rust
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+fn main() {
+    let rect1 = Rectangle { width: 30, height: 50 };
+
+    println!("rect1 is {:?}", rect1);
+}
+```
+Would output: `rect1 is Rectangle { width: 30, height: 50 }`
+
+Even better output can be achieved by using `{:#?}` which will produce this magnificent output:
+```
+rect1 is Rectangle {
+    width: 30,
+    height: 50
+}
+```
+

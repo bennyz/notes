@@ -886,3 +886,85 @@ rect1 is Rectangle {
 }
 ```
 
+
+### Method Syntax
+
+Methods are similar to structs as they are defined with `fn`, but differ in the context in which they are created.
+Methods are created in the context of a `struct` (or an `enum` or a *trait object*). Their first parameter is `self`, which
+represents an instance of the `struct` on which they are applied (similar to Python or `this` in Java).
+
+```rust
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    fn area(&self) -> u32 {
+        self.width * self.height
+    }
+}
+
+fn main() {
+    let rect1 = Rectangle { width: 30, height: 50 };
+
+    println!(
+        "The area of the rectangle is {} square pixels.",
+        rect1.area()
+    );
+}
+```
+
+In the example the method borrows `self` immutabely, but it can also get ownership by passing `self` without `&` or borrow mutably with `&mut self`.
+
+Implementing a second method that accept an instance of the struct
+
+```rust
+
+impl Rectangle {
+    fn area(&self) -> u32 {
+        self.width * self.height
+    }
+
+    fn can_hold(&self, other: &Rectangle) -> bool {
+        self.width > other.width && self.height > other.height
+    }
+}
+```
+
+`can_hold` checks whether another instance of `Rectangle` can fit into the current instance. We use `&self` and `&Rectangle` because
+we do not want to change any of the instances and we do not want ownership to allow the calling function to use the instances after
+this function call.
+
+Usage will look like this:
+```rust
+fn main() {
+    let rect1 = Rectangle { width: 30, height: 50 };
+    let rect2 = Rectangle { width: 10, height: 40 };
+    let rect3 = Rectangle { width: 60, height: 45 };
+
+    println!("Can rect1 hold rect2? {}", rect1.can_hold(&rect2)); // true
+    println!("Can rect1 hold rect3? {}", rect1.can_hold(&rect3)); // false
+}
+```
+
+### Associated Function
+
+We can define function within the `impl` block that do not receive `self`. This is like `static` function in Java.
+They are commonly used for creation purposes, `String::from("hello")` - `from` is an example of an associated function.
+
+Creating one on `Rectangle`
+```rust
+impl Rectangle {
+    fn square(size: u32) -> Rectangle {
+        Rectangle { width: size, height: size }
+    }
+}
+```
+
+To call `square` we'd do `Rectangle::square(10)`. The `::` is a namespace notation, and the function, being under `Rectangle`,
+is namespaced by it.
+
+Multiple `impl` blocks are allowed as well.
+

@@ -968,3 +968,110 @@ is namespaced by it.
 
 Multiple `impl` blocks are allowed as well.
 
+
+## Enums
+
+Simple enums are defined the following way:
+```rust
+enum IpAddrKind {
+    V4,
+    V6,
+}
+```
+
+They can be used with namespace notation `::`
+```rust
+let four = IpAddrKind::V4;
+let six = IpAddrKind::V6;
+```
+
+Accepting an enum kind and passing in functions:
+```rust
+fn route(ip_kind: IpAddrKind) { }
+
+route(IpAddrKind::V4);
+route(IpAddrKind::V6);
+```
+
+If we want to usually we could do something like this with a `struct`:
+```rust
+
+struct IpAddr {
+    kind: IpAddrKind,
+    address: String,
+}
+
+
+let home = IpAddr {
+    kind: IpAddrKind::V4,
+    address: String::from("127.0.0.1"),
+};
+
+let loopback = IpAddr {
+    kind: IpAddrKind::V6,
+    address: String::from("::1"),
+}
+```
+
+But enums give us a much better an concise way:
+```rust
+enum IpAddr {
+    V4(String),
+    V6(String),
+}
+
+let home = IpAddr::V4(String::from("127.0.0.1"));
+
+let loopback = IpAddr::V6(String::from("::1"));
+```
+
+This adds typed data to each variant!
+We can even use different types for each variant:
+```rust
+enum IpAddr {
+    V4(u8, u8, u8, u8),
+    V6(String),
+}
+
+let home = IpAddr::V4(127, 0, 0, 1);
+
+let loopback = IpAddr::V6(String::from("::1"));
+```
+Now `IpAddr::V4` is a tuple of 4 integers, and `IpAddr::V6` is a `String` (since ipv6 can have all characters as well).
+The standard library already contains `use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};`.
+
+```rust
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(i32, i32, i32),
+}
+```
+
+The `struct` equivalent of this would be:
+```rust
+
+struct QuitMessage; // unit struct
+struct MoveMessage {
+    x: i32,
+    y: i32,
+}
+struct WriteMessage(String); // tuple struct
+struct ChangeColorMessage(i32, i32, i32); // tuple struct
+```
+
+But we wouldn't be easily able to implement a method for these structs as we would for the `enum`!
+```rust
+impl Message {
+    fn call(&self) {
+         println!("{:?}", self);
+    }
+}
+
+let m = Message::Write(String::from("hello"));
+m.call();
+```
+
+This would print `Write("hello")` (of course #[derive(Debug)] has to be added to the `enum`).
+

@@ -1075,3 +1075,210 @@ m.call();
 
 This would print `Write("hello")` (of course #[derive(Debug)] has to be added to the `enum`).
 
+### Option Enum
+
+The Rust standard library exposes the `Option` enum. This enum is useful whenever a value can be present or missing (same as `Optional` in Java).
+Rust does not have `null`, so using `Option::None` is the way to represent a missing value.
+
+```rust
+enum Option<T> {
+    Some(T),
+    None,
+}
+```
+
+The `Option` enum is included in the prelude, so no need to use the namespace notation (`::`).
+
+```rust
+    let some_number = Some(5);
+    let some_string = Some("a string");
+
+    let absent_number: Option<i32> = None;
+```
+
+The `<>` notation is for generics, like in Java. Because we assign to None, Rust cannot know ahead of time what type will be stored in `Some`.
+
+```rust
+    let x: i8 = 5;
+    let y: Option<i8> = Some(5);
+
+    let sum = x + y;
+```
+
+This fails as `+` is not a defined operation on the `Option` type. Essentially, `Option<T>` has to be converted to `T` before we can operate
+on it.
+
+By using `Option<T>` we allow a "`null`" value, but by using `Option<T>` Rust forces to handle both cases, `Some` and `None`.
+How do we do that? we have [methods](https://doc.rust-lang.org/std/option/enum.Option.html) like `is_some` and `is_none`, but there an even
+better way:
+
+### match
+
+Rust has a cool operator call `match`. It allows comparing a value against a pattern, and perform code for each pattern
+(similar to `if` and `switch-case`, but not exactly).
+
+```rust
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter,
+}
+
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny => 1,
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter => 25,
+    }
+}
+```
+
+With `if` we need to return a boolean value `if coin == Coin::Penny` here there is no need to and it also requires deriving `PartialEq`.
+
+Using multiple lines of code in an arm
+```rust
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny => {
+            println!("Lucky penny!");
+            1
+        }
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter => 25,
+    }
+}
+```
+
+```rust
+#[derive(Debug)] // so we can inspect the state in a minute
+enum UsState {
+    Alabama,
+    Alaska,
+    // --snip--
+}
+
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter(UsState),
+}
+```
+
+To acesss the `UsState` value, we can add another variable
+```rust
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny => 1,
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter(state) => {
+            println!("State quarter from {:?}!", state);
+            25
+        }
+    }
+}
+```
+
+Using a call like `value_in_cents(Coin::Quarter(UsState::Alaska))`, will make `state` have the value of `UsState::Alaska`. And `coin`
+will be `Coin::Quarter(UsState::Alaska)`.
+
+### Matching Option<T>
+
+So how do we properly handle the the two options of `Option<T>`?
+```rust
+fn plus_one(x: Option<i32>) -> Option<i32> {
+    match x {
+        None => None,
+        Some(i) => Some(i + 1),
+    }
+}
+
+let five = Some(5);
+let six = plus_one(five);
+let none = plus_one(None);
+```
+This way we can perform operation, we return `None` in case there's nothing, and perform +1 if there's something and return the result
+wrapped with `Some` which is an `Option<T>`.
+
+If for some reason we forget to create an arm for `None`:
+```rust
+fn plus_one(x: Option<i32>) -> Option<i32> {
+    match x {
+        Some(i) => Some(i + 1),
+    }
+}
+```
+
+Rust will be angry at us:
+```
+error[E0004]: non-exhaustive patterns: `None` not covered
+ --> src/main.rs:3:15
+  |
+3 |         match x {
+  |               ^ pattern `None` not covered
+  |
+  = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+```
+
+Matches are exhaustive, all patterns have to be accounted for!
+
+### _ Placeholder
+
+using `_` in a `match` expressions allows us to match "all other values" at once:
+```rust
+let some_u8_value = 0u8;
+match some_u8_value {
+    1 => println!("one"),
+    3 => println!("three"),
+    5 => println!("five"),
+    7 => println!("seven"),
+    _ => (),
+}
+```
+`_` will match 0, 8 up to 255, they all will lead to returning a *Unit value*.
+
+### if let
+
+Sometimes a more concise approach is wanted.
+
+```rust
+let some_u8_value = Some(0u8);
+match some_u8_value {
+    Some(3) => println!("three"),
+    _ => (),
+}
+```
+
+Instead, we can do:
+```rust
+if let Some(3) = some_u8_value {
+    println!("three");
+}
+```
+
+But! This comes at a price: we lose the exhaustive checking and in this case `None` is not properly handled. This means we need
+to be careful when choosing one over the other and be mindful of the trade-offs.
+
+Another example:
+```rust
+let mut count = 0;
+match coin {
+    Coin::Quarter(state) => println!("State quarter from {:?}!", state),
+    _ => count += 1,
+}
+```
+
+Is the same as writing:
+```rust
+let mut count = 0;
+if let Coin::Quarter(state) = coin {
+    println!("State quarter from {:?}!", state);
+} else {
+    count += 1;
+}
+```
+

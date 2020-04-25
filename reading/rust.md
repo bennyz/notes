@@ -3,33 +3,33 @@
 ## Variables
 
 ```rust
-  // inferred
-  let x = 5; // immutable
+// inferred
+let x = 5; // immutable
 
-  // immutable
-  let mut x = 5;
+// immutable
+let mut x = 5;
 
-  // typed - unsigned int32
-  let guess: u32 = "42".parse().expect("Not a number!");
+// typed - unsigned int32
+let guess: u32 = "42".parse().expect("Not a number!");
 
-  // shadowing - a variable can be redefined using the previous value
-  let x = 5;
-  let x = x + 1; // x = 6
-  let x = x * 2; // x = 12
+// shadowing - a variable can be redefined using the previous value
+let x = 5;
+let x = x + 1; // x = 6
+let x = x * 2; // x = 12
 
 ```
 
 ## Data types
 
 ```rust
-  i8 // signed int8
-  i32 // signed int32
-  // ...
+i8 // signed int8
+i32 // signed int32
+// ...
 
-  // unsigned
-  u8 // unsigned int8
-  u32 // unsigned int32
-  // ...
+// unsigned
+u8 // unsigned int8
+u32 // unsigned int32
+// ...
 
 ```
 
@@ -37,122 +37,121 @@
 
 ```rust
 
-  // number literals
-  10_000 // decimal
-  0xff // hex
-  0o77 // oct
-  0b1111_0000 // binary
-  b'A' // bytes
+// number literals
+10_000 // decimal
+0xff // hex
+0o77 // oct
+0b1111_0000 // binary
+b'A' // bytes
 ```
 
 ```rust
-  // float is f64 by default
-  let x = 2.0 // f64
+// float is f64 by default
+let x = 2.0 // f64
 
-  let y: f32 = 2.0 // f32
+let y: f32 = 2.0 // f32
 ```
 
 ```rust
+// tuple
+let tup: (i32, f64, u8) = (500, 6.4, 1);
 
-  // tuple
-  let tup: (i32, f64, u8) = (500, 6.4, 1);
+// destructuring
+let tup = (500, 6.4, 1);
 
-  // destructuring
-  let tup = (500, 6.4, 1);
+let (x, y, z) = tup;
 
-  let (x, y, z) = tup;
-
-  // accessing specific fields can be done by index
-  let five_hundred = tup.0;
-  let six_point_four = tup.1;
-  let one = tup.2;
+// accessing specific fields can be done by index
+let five_hundred = tup.0;
+let six_point_four = tup.1;
+let one = tup.2;
 ```
 
 ```rust
-  // inferred array
-  let a = [1, 2, 3, 4, 5];
+// inferred array
+let a = [1, 2, 3, 4, 5];
 
-  // explicitly typed
-  let a: [i32; 5] = [1, 2, 3, 4, 5];
+// explicitly typed
+let a: [i32; 5] = [1, 2, 3, 4, 5];
 
-  // short initializtion
-  let a = [3; 5]; // [3, 3, 3, 3, 3]
+// short initializtion
+let a = [3; 5]; // [3, 3, 3, 3, 3]
 ```
 
 ## Structs
 
 ```rust
-  struct Ticket {
-    title: String,
-    description: String
+struct Ticket {
+  title: String,
+  description: String
+}
+
+// instantiate struct
+let t = Ticket {
+  title: String::from("Hello"),
+  description: String::from("World"),
+};
+
+// mutate fields - entire struct has to be mutable
+let mut t = Ticket {
+  title: String::from("Hello"),
+  description: String::from("World"),
+}
+
+t.title = String::from("Goodbye");
+
+// when variable and field have the same name
+// we can use the Field Init shorthand
+fn create_ticket(title: String, description: String) -> Ticket {
+  Ticket {
+    title,
+    description,
   }
+}
 
-  // instantiate struct
-  let t = Ticket {
-    title: String::from("Hello"),
-    description: String::from("World"),
-  };
+// tuple struct - they are grouped by some context, but the fields
+// do not have names
+struct Color(i32, i32, i32);
+struct Point(i32, i32, i32);
 
-  // mutate fields - entire struct has to be mutable
-  let mut t = Ticket {
-    title: String::from("Hello"),
-    description: String::from("World"),
-  }
+// `black` and `origin` look the same, but they are of different types
+// they cannot be switched
+let black = Color(0, 0, 0);
+let origin = Point(0, 0, 0);
 
-  t.title = String::from("Goodbye");
+// specific values can be access by index
+let r = black.0;
+let g = black.1;
+let b = black.2;
 
-  // when variable and field have the same name
-  // we can use the Field Init shorthand
-  fn create_ticket(title: String, description: String) -> Ticket {
-    Ticket {
-      title,
-      description,
-    }
-  }
-
-  // tuple struct - they are grouped by some context, but the fields
-  // do not have names
-  struct Color(i32, i32, i32);
-  struct Point(i32, i32, i32);
-
-  // `black` and `origin` look the same, but they are of different types
-  // they cannot be switched
-  let black = Color(0, 0, 0);
-  let origin = Point(0, 0, 0);
-
-  // specific values can be access by index
-  let r = black.0;
-  let g = black.1;
-  let b = black.2;
-
-  // Unit-Like struct
-  // these are empty struct, they are useful when no attributes are needed
-  // but you want to implement traits (similar to Go)
-  struct Person;
+// Unit-Like struct
+// these are empty struct, they are useful when no attributes are needed
+// but you want to implement traits (similar to Go)
+struct Person;
 ```
 
 ## Functions
 ```rust
-  // basic
-  fn main() {
-      println!("Hello, world!");
+// basic
+fn main() {
+    println!("Hello, world!");
 
-      another_function();
-  }
+    another_function();
+}
 
-  fn another_function() {
-      println!("Another function.");
-  }
+fn another_function() {
+    println!("Another function.");
+}
 
-  // receive parameters
-  fn another_function(x: i32) {
-    println!("The value of x is: {}", x);
-  }
+// receive parameters
+fn another_function(x: i32) {
+  println!("The value of x is: {}", x);
+}
 
-  // return values
-  fn five() -> i32 {
-    5 // implicit return - when implicit return is used, semi-colon should not be used either
-  }
+// return values
+fn five() -> i32 {
+  5 // implicit return - when implicit return is used, semi-colon should not be used either
+}
 ```
 
 ## Control Flow
@@ -1281,4 +1280,190 @@ if let Coin::Quarter(state) = coin {
     count += 1;
 }
 ```
+
+## Package, Crates and Modules
+
+>* Packages: A Cargo feature that lets you build, test, and share crates
+>* Crates: A tree of modules that produces a library or executable
+>* Modules and use: Let you control the organization, scope, and privacy of paths
+>* Paths: A way of naming an item, such as a struct, function, or module
+
+### Packages and Crates
+
+A crate is a binary or a library.
+The crate root is a source file that the Rust compiler starts from and makes up the root module of the create.
+A package is one or more crates that provide a set of functionality. A package contains a Cargo.toml file that describes how to build those crates.
+
+A package must contain zero or one library crates, it can contain many binary crates, but it must contain at least one crate, either binary or a
+library crate.
+
+```shell
+$ cargo new my-project
+     Created binary (application) `my-project` package
+$ ls my-project
+Cargo.toml
+src
+$ ls my-project/src
+main.rs
+```
+
+The convention Rust follows for binary crates is that the main file will be located at `src/main.rs`, this is the create root of package with the same name.
+If a package contains a `src/lib.rs`, this is the crate root of a library with the same name. Rust passes the files under the crate root to `rustc` when
+building.
+
+In the example above, we have a package that only contains `src/main.rs`, meaning it only contains a binary crate named `my-project`.
+A package containing both `src/main.rs` and `src/lib.rs`, will have 2 crates both with same name as the package.
+
+A crate groups functionality together in a scope. The `rand` crate provides generation of random numbers and is used the following way:
+```rust
+use rand::Rng;
+```
+
+Here we use a trait named `Rng`, but we can also declare our own `Rng`, since `rand`'s `Rng` is namespaced with `::`.
+So our `Rng` will be just `Rng` and `rand`'s will be `rand::Rng`.
+
+### Defining Modules to Control Scope and Privacy
+
+Modules let us organize code within the scope of a crate. They also control the privacy of code (public/private).
+
+Creating a new library project:
+```
+cargo new --lib restaurant
+```
+
+```rust
+mod front_of_house {
+    mod hosting {
+        fn add_to_waitlist() {}
+
+        fn seat_at_table() {}
+    }
+
+    mod serving {
+        fn take_order() {}
+
+        fn serve_order() {}
+
+        fn take_payment() {}
+    }
+}
+```
+
+Here we create a module `front_of_house` which represent the "front" of the restaurant (servers and hosts). A module is defined with
+the `mod` keyword.
+
+By using modules we can group related stuff together, such as functions, traits, enums and more without worrying about collisions
+and organize our code better.
+
+The module tree for the restaurant will look like this:
+```
+crate
+ └── front_of_house
+     ├── hosting
+     │   ├── add_to_waitlist
+     │   └── seat_at_table
+     └── serving
+         ├── take_order
+         ├── serve_order
+         └── take_payment
+```
+
+`hosting` and `serving` are submodules of `front_of_house`. `crate` is the *crate root* (`src/main.rs` or `src/lib.rs`).
+
+
+### Paths for Referring to an Item in the Module Tree
+
+>To show Rust where to find an item in a module tree, we use a path in the same way we use a path when navigating a filesystem.
+>If we want to call a function, we need to know its path.
+
+>A path can take two forms:
+>* An absolute path starts from a crate root by using a crate name or a literal crate.
+>* A relative path starts from the current module and uses self, super, or an identifier in the current module.
+
+Absolute paths and relative paths use the namespace notation `::`.
+Suppose we want to call `add_to_waitlist` in our `src/lib.rs` with either:
+```rust
+mod front_of_house {
+    mod hosting {
+        fn add_to_waitlist() {}
+    }
+}
+
+pub fn eat_at_restaurant() {
+    // Absolute path
+    crate::front_of_house::hosting::add_to_waitlist();
+
+    // Relative path
+    front_of_house::hosting::add_to_waitlist();
+}
+```
+
+`crate` refers to the *crate root* and starts the absolute path.
+The relative path, starting with `front_of_house` works because we are in fact at the *crate root*.
+
+The code above will not compile however:
+```
+error[E0603]: module `hosting` is private
+ --> src/lib.rs:9:30
+  |
+9 |       crate::front_of_house::hosting::add_to_waitlist();
+  |                              ^^^^^^^ this module is private
+  |
+
+```
+
+Everything in Rust modules is private by default. Items in parent modules can't access the child's private itmes, but it would work vice-versa.
+We can expose private items to the parent using the `pub` keyword.
+
+```rust
+mod front_of_house {
+    pub mod hosting {
+        fn add_to_waitlist() {}
+    }
+}
+
+pub fn eat_at_restaurant() {
+    // Absolute path
+    crate::front_of_house::hosting::add_to_waitlist();
+
+    // Relative path
+    front_of_house::hosting::add_to_waitlist();
+}
+```
+This fix would still fail however.
+
+```
+ --> src/lib.rs:9:37
+  |
+9 |     crate::front_of_house::hosting::add_to_waitlist();
+  |                                     ^^^^^^^^^^^^^^^
+
+error[E0603]: function `add_to_waitlist` is private
+  --> src/lib.rs:12:30
+   |
+12 |     front_of_house::hosting::add_to_waitlist();
+   |                              ^^^^^^^^^^^^^^^
+
+```
+
+Making `hosting` public allows us to access the module, but its items are still private. We have to make `add_to_waitlist` public as well.
+
+```rust
+mod front_of_house {
+    pub mod hosting {
+        pub fn add_to_waitlist() {}
+    }
+}
+
+pub fn eat_at_restaurant() {
+    // Absolute path
+    crate::front_of_house::hosting::add_to_waitlist();
+
+    // Relative path
+    front_of_house::hosting::add_to_waitlist();
+}
+```
+
+This works. `front_of_house` isn't public, `eat_at_restaurant` is defined is defined in the same module (they are siblings),
+thus it can refer `front_of_house`.
 

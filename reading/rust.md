@@ -1467,3 +1467,187 @@ pub fn eat_at_restaurant() {
 This works. `front_of_house` isn't public, `eat_at_restaurant` is defined is defined in the same module (they are siblings),
 thus it can refer `front_of_house`.
 
+
+#### Starting Relative Paths with super
+
+It is possible to start a relative path referring to the parent module with the `super` keyword.
+This is similar to `..` in the filesyste.
+
+Suppose we need to have the chef fix the incorrect order, but the chef is part of the `back_of_house`
+model, while `serve_order` is a `front_of_house` function.
+```rust
+fn serve_order() {}
+
+mod back_of_house {
+    fn fix_incorrect_order() {
+        cook_order();
+        super::serve_order();
+    }
+
+    fn cook_order() {}
+}
+```
+
+`super` in this case is the parent module of `back_of_house`, and in this case it just refers to `crate`.
+The advantage of using `super` in this case is that it allows us the flexibility of moving this to another
+module without having to change anything, unlike if we left it with `crate`.
+
+#### Making Structs and Enums Public
+
+`pub` can also be used to mark fields within structs as public.
+
+```rust
+
+mod back_of_house {
+    pub struct Breakfast {
+        pub toast: String,
+        seasonal_fruit: String,
+    }
+
+    impl Breakfast {
+        pub fn summer(toast: &str) -> Breakfast {
+            Breakfast {
+                toast: String::from(toast),
+                seasonal_fruit: String::from("peaches"),
+            }
+        }
+    }
+}
+
+pub fn eat_at_restaurant() {
+    // Order a breakfast in the summer with Rye toast
+    let mut meal = back_of_house::Breakfast::summer("Rye");
+    // Change our mind about what bread we'd like
+    meal.toast = String::from("Wheat");
+    println!("I'd like {} toast please", meal.toast);
+
+    // The next line won't compile if we uncomment it; we're not allowed
+    // to see or modify the seasonal fruit that comes with the meal
+    // meal.seasonal_fruit = String::from("blueberries");
+}
+```
+Here only `toast` public, as we don't want the user to have control of `seasonal_fruit`.
+
+enums marked with `pub` however, always have all their variants public. Since an enum represents a single
+value at a time, it doesn't make much sense making only some of the values available.
+
+### Bringing Paths into Scope with the use Keyword
+
+Using paths like we previously did is long and annoying. Instead, like in other languages, we
+have a keyword to bring modules or even specific items into the scope, in Rust it's called `use`.
+
+```rust
+mod front_of_house {
+    pub mod hosting {
+        pub fn add_to_waitlist() {}
+    }
+}
+
+use crate::front_of_house::hosting;
+
+pub fn eat_at_restaurant() {
+    hosting::add_to_waitlist();
+    hosting::add_to_waitlist();
+    hosting::add_to_waitlist();
+}
+```
+
+`use` is similar to `import` in Java and Python. Bringing in functions should be done by `use`ing their module.
+However, the idiomatic way to bring in enums and structs is to `use` them.
+
+```rust
+use std::collections::HashMap;
+
+fn main() {
+    let mut map = HashMap::new();
+    map.insert(1, 2);
+}
+```
+
+This won't work when we have two items with the same name. In this case the keyword `as` can be used.
+```rust
+
+use std::fmt::Result;
+use std::io::Result as IoResult;
+
+fn function1() -> Result {
+    // --snip--
+}
+
+fn function2() -> IoResult<()> {
+    // --snip--
+}
+```
+
+#### Re-exporting Names with `pub use`
+
+The name brought into the scope by `use` is private, we can make it public for others to use by adding the
+`pub` keyword before.
+
+```rust
+mod front_of_house {
+    pub mod hosting {
+        pub fn add_to_waitlist() {}
+    }
+}
+
+pub use crate::front_of_house::hosting;
+
+pub fn eat_at_restaurant() {
+    hosting::add_to_waitlist();
+    hosting::add_to_waitlist();
+    hosting::add_to_waitlist();
+}
+```
+
+>By using pub use, external code can now call the add_to_waitlist function using hosting::add_to_waitlist. If we hadn’t specified pub use, the eat_at_restaurant function could call hosting::add_to_waitlist in its scope, but external code couldn’t take advantage of this new path.
+
+>Re-exporting is useful when the internal structure of your code is different from how programmers calling your code would think about the domain. For example, in this restaurant metaphor, the people running the restaurant think about “front of house” and “back of house.” But customers visiting a restaurant probably won’t think about the parts of the restaurant in those terms. With pub use, we can write our code with one structure but expose a different structure. Doing so makes our library well organized for programmers working on the library and programmers calling the library.
+To be fair, I don't fully understand this, hopefully this will become clearer over time.
+
+#### Using External Packages
+
+To use `rand` in our project, we added this line to `Cargo.toml`:
+```rust
+[dependencies]
+rand = "0.5.5"
+```
+
+Cargo will download the package with its dependencies from crates.io.
+`use rand::Rng;` is how we would bring it to our usage:
+
+```rust
+use rand::Rng;
+
+fn main() {
+    let secret_number = rand::thread_rng().gen_range(1, 101);
+}
+```
+
+#### Using Nested Paths to Clean Up Large use Lists
+
+We wrap `use` the same package or module into a single a line to shorten long `use` lists:
+```rust
+// --snip--
+use std::cmp::Ordering;
+use std::io;
+// --snip--
+```
+
+```rust
+// --snip--
+use std::{cmp::Ordering, io};
+// --snip--
+```
+
+#### The Glob Operator
+
+We can bring in all public items by using `*`
+
+```rust
+use std::collections::*
+```
+
+NOT RECOMMENDED (as in any other language).
+It's usually useful for tests testing eveyrthing in a module.
+

@@ -1651,3 +1651,23 @@ use std::collections::*
 NOT RECOMMENDED (as in any other language).
 It's usually useful for tests testing eveyrthing in a module.
 
+### Separating Modules into Different Files
+
+Instead of cramming modules into single file, we can separate them into different files.
+
+Following-up on the previous example we can move `front_of_house` into `src/front_of_house.rs`
+and in `src/lib.rs` use it like this:
+```rust
+mod front_of_house;
+
+pub use crate::front_of_house::hosting;
+
+pub fn eat_at_restaurant() {
+    hosting::add_to_waitlist();
+    hosting::add_to_waitlist();
+    hosting::add_to_waitlist();
+}
+```
+
+Using a semi-colon instead of a block will load the contents from another file with the same name.
+

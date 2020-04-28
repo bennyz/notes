@@ -1671,3 +1671,152 @@ pub fn eat_at_restaurant() {
 
 Using a semi-colon instead of a block will load the contents from another file with the same name.
 
+
+## Collections
+
+3 commonly used collections in Rust are:
+* *vector* - store variable number of values next to each other in the memory
+* *string* - a collection of characters
+* *hash map* - associate a values with keys
+
+### Vectors
+
+To create a new vector
+```rust
+    let v: Vec<i32> = Vec::new();
+```
+
+The type has to be specified because there are no elements added, so Rust cannot infer the type automatically.
+Usually the values will be known so we can use the macro `vec!`:
+```rust
+    let v = vec![1, 2, 3];
+```
+
+`v` is effectively a `Vec<i32>`.
+
+Updating a vector:
+```rust
+let mut v = Vec::new();
+
+v.push(5);
+v.push(6);
+```
+
+Since we insert values that are `i32`, Rust is able to infer `v`'s type.
+
+Obvious:
+```rust
+{
+    let v = vec![1, 2, 3, 4];
+
+    // do stuff with v
+} // <- v goes out of scope and is freed here
+```
+
+To read the elements of a vector:
+```rust
+let v = vec![1, 2, 3, 4, 5];
+
+let third: &i32 = &v[2];
+println!("The third element is {}", third);
+
+match v.get(2) {
+    Some(third) => println!("The third element is {}", third),
+    None => println!("There is no third element."),
+}
+```
+
+So essentially we have 2 ways:
+1. Access the index `&v[2]`;
+2. Use `.get`, this will return an `Option<&T>` which we can `match` for `None` and `Some`.
+
+Using option 1 will panic and crash if we try to access an index that does not exist. So if we cannot know for certain an index exists
+it is best to use `.get` which will let us handle the situation gracefully.
+
+```rust
+let mut v = vec![1, 2, 3, 4, 5];
+
+let first = &v[0];
+
+v.push(6);
+
+println!("The first element is: {}", first);
+```
+
+This will fail with an error. Because `let first = &v[0]` performs an *immutable* borrow, `v.push(6)` performs a *mutable* borrow
+and finally we have another *immutable borrow* with `println!`.
+Note: this would have worked without `println!` because the borrow checker is able to recognize that no borrows occur later.
+
+But why does `.push` make a *mutable borrow*, that is because a push can trigger a reallocation of the vector if we reached
+the threshold (again, similar to an ArrayList and other collections in Java), so this call can mutate the vector and move it
+to a different location in the memory.
+
+### Iterating
+
+This is a simple iteration, it uses an *immutable borrow*
+
+```rust
+let v = vec![100, 32, 57];
+for i in &v {
+    println!("{}", i);
+}
+```
+
+If we want to perform mutations on `v` we'd do:
+```rust
+let mut v = vec![100, 32, 57];
+for i in &mut v {
+    *i += 50;
+}
+```
+
+Since `i` is a reference to the location of `v[i]` in the memory, we need to *dereference* it with `*` to follow the pointer to
+the location and mutate the value. Will be covered later as well.
+
+### Using an Enum to Store Multiple Types
+
+Generally vectors will contain data of the same type since Rust has to know how much memory to allocate, this is also error-prone
+as having different types in a vector will not allow to safely iterate and perform operation, as not all operation are necessarily
+valid for each type the vector will store.
+
+But, we have a way around it with enums!
+```rust
+enum SpreadsheetCell {
+    Int(i32),
+    Float(f64),
+    Text(String),
+}
+
+let row = vec![
+    SpreadsheetCell::Int(3),
+    SpreadsheetCell::Text(String::from("blue")),
+    SpreadsheetCell::Float(10.12),
+];
+```
+
+This allows us store multiple types and have `match` to ensure operation safety, as match is exhaustive. There are cases where
+enums won't help, because we don't know ahead of time the entire list of types we need. Traits will help with that and will be
+covered later.
+
+From the docs:
+```
+    You want to collect items up to be processed or sent elsewhere later, and don't care about any properties of the actual values being stored.
+    You want a sequence of elements in a particular order, and will only be appending to (or near) the end.
+    You want a stack.
+    You want a resizable array.
+    You want a heap-allocated array.
+```
+
+```rust
+let mut stack = Vec::new();
+
+stack.push(1);
+stack.push(2);
+stack.push(3);
+
+while let Some(top) = stack.pop() {
+    // Prints 3, 2, 1
+    println!("{}", top);
+}
+```
+

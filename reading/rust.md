@@ -74,7 +74,7 @@ let a = [1, 2, 3, 4, 5];
 // explicitly typed
 let a: [i32; 5] = [1, 2, 3, 4, 5];
 
-// short initializtion
+// short initialization
 let a = [3; 5]; // [3, 3, 3, 3, 3]
 ```
 
@@ -283,7 +283,7 @@ we can easily "jump" to each value using *start_offset + data_type_size + index*
   // It is compiled in the binary, similar to *final String* in Java.
   let s = "string"
 
-  // This creats a *String* from a string literal, it is *mutable*, allocated on the heap, and *owned*
+  // This creates a *String* from a string literal, it is *mutable*, allocated on the heap, and *owned*
   let s = String::from("string");
 
   // It can be mutated the following way
@@ -338,7 +338,7 @@ A *String* is made up like this:
 When `s1` is assigned to `s2` we get another structure, similar to the one on the left, only for `s2`.
 The pointer and the metadata are copied, but no the data pointed by the variable!
 
-Since *drop* is called at the end of the block, Rust will attempt to free s1 and then s2, but since the they
+Since *drop* is called at the end of the block, Rust will attempt to free `s1` and then `s2`, but since the they
 have a pointer to the same location on the heap, it might free the same memory area twice (*double free*)!
 This leads to undefined behavior which can cause data corruption and security issues.
 
@@ -368,7 +368,7 @@ let s2 = s1.clone();
 println!("s1 = {}, s2 = {}", s1, s2);
 ```
 
-Rust has a `Copy` trait the we can implement for types, but it won't let derive it if the type has implmented `Drop`
+Rust has a `Copy` trait the we can implement for types, but it won't let derive it if the type has implemented `Drop`
 (because it manages memory on its own) as well (heap allocated)
 
 ```rust
@@ -424,7 +424,7 @@ fn makes_copy(some_integer: i32) { // some_integer comes into scope
 `s` is heap-allocated, so its value is moved and not copied, ownership is passed to
 `takes_ownership` and it frees it.
 
-`x` however is stack allocated, so a copy is performed and it is still acessible after
+`x` however is stack allocated, so a copy is performed and it is still accessible after
 the function call. It will be cleared after `main` completes.
 
 #### Return values
@@ -1751,7 +1751,7 @@ But why does `.push` make a *mutable borrow*, that is because a push can trigger
 the threshold (again, similar to an ArrayList and other collections in Java), so this call can mutate the vector and move it
 to a different location in the memory.
 
-### Iterating
+#### Iterating
 
 This is a simple iteration, it uses an *immutable borrow*
 
@@ -1773,7 +1773,7 @@ for i in &mut v {
 Since `i` is a reference to the location of `v[i]` in the memory, we need to *dereference* it with `*` to follow the pointer to
 the location and mutate the value. Will be covered later as well.
 
-### Using an Enum to Store Multiple Types
+#### Using an Enum to Store Multiple Types
 
 Generally vectors will contain data of the same type since Rust has to know how much memory to allocate, this is also error-prone
 as having different types in a vector will not allow to safely iterate and perform operation, as not all operation are necessarily
@@ -1819,4 +1819,191 @@ while let Some(top) = stack.pop() {
     println!("{}", top);
 }
 ```
+
+### Strings
+
+TL;DR: Strings are super complicated
+
+The `String` type is a growable, mutable, owned, UTF-8 encoded type.
+
+#### Creating a New String
+
+```rust
+let mut s = String::new();
+```
+
+Usage:
+```rust
+let data = "initial contents";
+
+let s = data.to_string();
+
+// the method also works on a literal directly:
+let s = "initial contents".to_string();
+```
+
+`to_string` is available for any type implementing the `Display` trait.
+
+#### Updating a String
+
+We can grow a `String` with `push_str`:
+```rust
+let mut s = String::from("foo");
+s.push_str("bar"); // s is now foobar
+```
+`push_str` accepts a `&str`, so it does not take ownership.
+```rust
+let mut s1 = String::from("foo");
+let s2 = "bar";
+s1.push_str(s2);
+println!("s2 is {}", s2); // works!
+```
+
+Appending a single character:
+```rust
+let mut s = String::from("lo");
+s.push('l'); // lol
+```
+
+#### Concatenation with the + Operator or the format! Macro
+
+We can concatenate strings with `+`
+```rust
+let s1 = String::from("Hello, ");
+let s2 = String::from("world!");
+let s3 = s1 + &s2; // note s1 has been moved here and can no longer be used
+```
+
+The `+` operator uses the `add` method, which has signature similar to `fn add(self, s: &str) -> String`. In this case, `self` is `s1`.
+It is passed without `&`, so `add` takes ownership of it.
+`s2` is passed as `&str`, and not `&String`, this works because of *deref coercion* which will be explained later, but this effectively
+turns `&s2` into `&s2[..]`. As a result `s2` will remain valid.
+To sum up: `let s3 = s1 + &s2;` takes ownership of `s1` and appends `s2` to it, and then returns the ownership.
+
+But the `+` can be get clunky:
+```rust
+let s1 = String::from("tic");
+let s2 = String::from("tac");
+let s3 = String::from("toe");
+
+let s = s1 + "-" + &s2 + "-" + &s3;
+```
+So we have better options like the `format!` macro which return a `String`.
+```rust
+let s = format!("{}-{}-{}", s1, s2, s3);
+```
+Ah, much better!
+
+#### Indexing into Strings
+
+If we want to access a specific character in a `String`, we might do something like:
+```rust
+let s1 = String::from("hello");
+let h = s1[0];
+```
+
+This, however, will fail.
+```
+  |
+3 |     let h = s1[0];
+  |             ^^^^^ `std::string::String` cannot be indexed by `{integer}`
+  |
+  = help: the trait `std::ops::Index<{integer}>` is not implemented for `std::string::String`
+```
+
+Rust does not support indexing on strings.
+
+##### Internal Representation
+
+A `String` is a wrapper over a `Vec<u8>`.
+```rust
+let hello = String::from("Hola");
+```
+In this case `len` will be 4.
+
+But in this case (hello in Russian):
+```rust
+let hello = String::from("Здравствуйте");
+```
+We might expect `len` to be 12, but it will actually be 24! This is because of how UTF-8 works.
+In the Russian example each character takes up 2 bytes, unlike the English example taking up only 1 byte per character.
+So trying to access character by their index won't work reliably, since there is no way to tell what to return exactly.
+If only a single byte is returned, we would not get a meaningful character.
+
+```
+Another point about UTF-8 is that there are actually three relevant ways to look at strings from Rust’s perspective: as bytes, scalar values, and grapheme clusters (the closest thing to what we would call letters).
+```
+
+```
+If we look at the Hindi word “नमस्ते” written in the Devanagari script, it is stored as a vector of u8 values that looks like this:
+
+[224, 164, 168, 224, 164, 174, 224, 164, 184, 224, 165, 141, 224, 164, 164,
+224, 165, 135]
+```
+
+```
+That’s 18 bytes and is how computers ultimately store this data. If we look at them as Unicode scalar values, which are what Rust’s char type is, those bytes look like this:
+['न', 'म', 'स', '्', 'त', 'े']
+```
+
+```
+There are six char values here, but the fourth and sixth are not letters: they’re diacritics that don’t make sense on their own. Finally, if we look at them as grapheme clusters, we’d get what a person would call the four letters that make up the Hindi word:
+
+["न", "म", "स्", "ते"]
+```
+
+Another reason Rust does not allow string indexing is that it is expected to be an O(1) operation, but this guarantee cannot be made,
+because in UTF-8 this would require traversing the string ahead of time and check for valid characters.
+
+#### Slicing Strings
+
+This, too, is a problem:
+```
+let hello = "Здравствуйте";
+
+let s = &hello[0..4];
+```
+Since each character is two bytes, and `s` is 4, we will get `Зд`. But if we try to do `&hello[0..1]`, which is only 1 byte and does not make
+a single valid character:
+```
+thread 'main' panicked at 'byte index 1 is not a char boundary; it is inside 'З' (bytes 0..2) of `Здравствуйте`',
+```
+Rust will panic.
+
+Instead we should:
+
+#### Methods for Iterating Over Strings
+
+We can iterate over a string using the `chars` method:
+```rust
+for c in "नमस्ते".chars() {
+    println!("{}", c);
+}
+```
+This will produce 6 values:
+```
+न
+म
+स
+्
+त
+े
+```
+We can also get the raw bytes with `bytes()`:
+```rust
+for b in "नमस्ते".bytes() {
+    println!("{}", b);
+}
+```
+
+Will produce 18 bytes:
+```
+224
+164
+// --snip--
+165
+135
+```
+
+However getting the actual grapheme clusters is complicated and not provided by the standard library.
 

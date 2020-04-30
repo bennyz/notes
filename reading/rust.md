@@ -2007,3 +2007,38 @@ Will produce 18 bytes:
 
 However getting the actual grapheme clusters is complicated and not provided by the standard library.
 
+
+### Hash Maps
+
+The hash map type is `HashMap<K, V>` (just like Java!).
+
+#### Creating a new hash map
+
+```rust
+use std::collections::HashMap;
+
+let mut scores = HashMap::new();
+
+scores.insert(String::from("Blue"), 10);
+scores.insert(String::from("Yellow"), 50);
+```
+
+Unlike `Vec` `HashMap<K, V>` has no `vec!` equivalent.
+All keys must have the same type, as well as the values.
+
+Another way of creating hash maps is `collect` (just like streams in Java!)
+```rust
+use std::collections::HashMap;
+
+let teams = vec![String::from("Blue"), String::from("Yellow")];
+let initial_scores = vec![10, 50];
+
+let mut scores: HashMap<_, _> =
+    teams.into_iter().zip(initial_scores.into_iter()).collect();
+```
+`zip` creates a tuple that pairs each element in each vector with the corresponding element (just like Python).
+In this case it will be [("Blue", 10), ("Yellow", 50)]
+
+The type annotation `HashMap<_, _>`, `.collect` can return many different data types, so we have to tell Rust which one we're expecting.
+But we can use the `_` placeholder since Rust can infer the key-value types based on the types in the vectors.
+

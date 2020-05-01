@@ -688,7 +688,7 @@ let hello = &s[6..];
 let entire = &s[..];
 ```
 
-In the mamory it will look somethign like this
+In the memory it will look something like this
 ```
 s
 ------------         -------------
@@ -837,7 +837,7 @@ fn area(rectangle: &Rectangle) -> u32 {
 ```
 
 Here `rectangle` is an *immutable borrow* of `Rectangle`. We are not changing the struct so no need for a *mutable borrow*,
-and since `main()` uses it after function call, we cannot take owenrship of it.
+and since `main()` uses it after function call, we cannot take ownership of it.
 
 ### Adding Functionality with Derived Traits
 
@@ -915,7 +915,7 @@ fn main() {
 }
 ```
 
-In the example the method borrows `self` immutabely, but it can also get ownership by passing `self` without `&` or borrow mutably with `&mut self`.
+In the example the method borrows `self` immutably, but it can also get ownership by passing `self` without `&` or borrow mutably with `&mut self`.
 
 Implementing a second method that accept an instance of the struct
 
@@ -1167,7 +1167,7 @@ enum Coin {
 }
 ```
 
-To acesss the `UsState` value, we can add another variable
+To access the `UsState` value, we can add another variable
 ```rust
 fn value_in_cents(coin: Coin) -> u8 {
     match coin {
@@ -1187,7 +1187,7 @@ will be `Coin::Quarter(UsState::Alaska)`.
 
 ### Matching Option<T>
 
-So how do we properly handle the the two options of `Option<T>`?
+So how do we properly handle the two options of `Option<T>`?
 ```rust
 fn plus_one(x: Option<i32>) -> Option<i32> {
     match x {
@@ -1227,7 +1227,7 @@ Matches are exhaustive, all patterns have to be accounted for!
 
 ### _ Placeholder
 
-using `_` in a `match` expressions allows us to match "all other values" at once:
+Using `_` in a `match` expressions allows us to match "all other values" at once:
 ```rust
 let some_u8_value = 0u8;
 match some_u8_value {
@@ -1292,7 +1292,7 @@ if let Coin::Quarter(state) = coin {
 
 A crate is a binary or a library.
 The crate root is a source file that the Rust compiler starts from and makes up the root module of the create.
-A package is one or more crates that provide a set of functionality. A package contains a Cargo.toml file that describes how to build those crates.
+A package is one or more crates that provide a set of functionality. A package contains a `Cargo.toml` file that describes how to build those crates.
 
 A package must contain zero or one library crates, it can contain many binary crates, but it must contain at least one crate, either binary or a
 library crate.
@@ -1412,7 +1412,7 @@ error[E0603]: module `hosting` is private
 
 ```
 
-Everything in Rust modules is private by default. Items in parent modules can't access the child's private itmes, but it would work vice-versa.
+Everything in Rust modules is private by default. Items in parent modules can't access the child's private items, but it would work vice-versa.
 We can expose private items to the parent using the `pub` keyword.
 
 ```rust
@@ -1471,7 +1471,7 @@ thus it can refer `front_of_house`.
 #### Starting Relative Paths with super
 
 It is possible to start a relative path referring to the parent module with the `super` keyword.
-This is similar to `..` in the filesyste.
+This is similar to `..` in the filesystem.
 
 Suppose we need to have the chef fix the incorrect order, but the chef is part of the `back_of_house`
 model, while `serve_order` is a `front_of_house` function.
@@ -1649,7 +1649,7 @@ use std::collections::*
 ```
 
 NOT RECOMMENDED (as in any other language).
-It's usually useful for tests testing eveyrthing in a module.
+It's usually useful for tests testing everything in a module.
 
 ### Separating Modules into Different Files
 
@@ -2041,4 +2041,108 @@ In this case it will be [("Blue", 10), ("Yellow", 50)]
 
 The type annotation `HashMap<_, _>`, `.collect` can return many different data types, so we have to tell Rust which one we're expecting.
 But we can use the `_` placeholder since Rust can infer the key-value types based on the types in the vectors.
+
+#### Hash Maps and Ownership
+
+As usual, types implementing the `Copy` trait (`i32`) will be copied into the hash map, while owned values (`String`) will be moved.
+
+```rust
+use std::collections::HashMap;
+
+let field_name = String::from("Favorite color");
+let field_value = String::from("Blue");
+
+let mut map = HashMap::new();
+map.insert(field_name, field_value); // field_name, field_value are moved and using them later will not compile
+```
+
+References will not be moved, but the reference has to be valid as long as the hash map.
+
+
+#### Accessing Values in a Hash Map
+
+We access map values with `.get()`
+```rust
+use std::collections::HashMap;
+
+let mut scores = HashMap::new();
+
+scores.insert(String::from("Blue"), 10);
+scores.insert(String::from("Yellow"), 50);
+
+let team_name = String::from("Blue");
+let score = scores.get(&team_name);
+```
+
+`score` will `Some(10)` because `.get()` returns an `Option<&V>`.
+
+We can iterate over map values:
+```rust
+use std::collections::HashMap;
+
+let mut scores = HashMap::new();
+
+scores.insert(String::from("Blue"), 10);
+scores.insert(String::from("Yellow"), 50);
+
+for (key, value) in &scores {
+    println!("{}: {}", key, value);
+}
+// Yellow: 50
+```
+
+#### Updating a Hash Map
+
+```rust
+use std::collections::HashMap;
+
+let mut scores = HashMap::new();
+
+scores.insert(String::from("Blue"), 10);
+scores.insert(String::from("Blue"), 25);
+
+println!("{:?}", scores);
+```
+
+Multiple calls to `.insert` will override the previous value (just like `.put` in Java).
+
+If we want to insert only if the value is missing (`putIfAbsent` in Java) we can use `entry` with `or_insert`:
+```rust
+use std::collections::HashMap;
+
+let mut scores = HashMap::new();
+scores.insert(String::from("Blue"), 10);
+
+scores.entry(String::from("Yellow")).or_insert(50);
+scores.entry(String::from("Blue")).or_insert(50);
+
+println!("{:?}", scores);
+```
+
+`.entry()` returns an `Entry` enum. `.or_insert()` returns a mutable reference to the value if it exists, otherwise inserts it and then
+returns the mutable reference to it.
+
+##### Updating a Value Based on the Old Value
+
+To update a value:
+```rust
+use std::collections::HashMap;
+
+let text = "hello world wonderful world";
+
+let mut map = HashMap::new();
+
+for word in text.split_whitespace() {
+    let count = map.entry(word).or_insert(0);
+    *count += 1;
+}
+
+println!("{:?}", map);
+```
+
+As mentioned before, `.or_insert()` returns a mutable reference `&mut V`, by dereferencing we can make changes to the reference returned.
+
+
+By default `HashMap` uses [SipHash](https://www.131002.net/siphash/siphash.pdf), it's not particularly fast, but it provides good security,
+especially against DoS. The used hash function can be customized with the `BuildHasher` trait.
 

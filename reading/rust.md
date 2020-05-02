@@ -2146,3 +2146,43 @@ As mentioned before, `.or_insert()` returns a mutable reference `&mut V`, by der
 By default `HashMap` uses [SipHash](https://www.131002.net/siphash/siphash.pdf), it's not particularly fast, but it provides good security,
 especially against DoS. The used hash function can be customized with the `BuildHasher` trait.
 
+
+## Error Handling
+
+Rust has two main categories of errors: recoverable and unrecoverable.
+For recoverable errors Rust has the `Result<T, E>` type, and for unrecoverable errors, the `panic!` macro.
+
+### panic!
+
+```
+When the panic! macro executes, your program will print a failure message, unwind and clean up the stack, and then quit
+```
+
+By default panic! unwinds and cleans up the stack which can take some time. It is also possible to abort immediately and leave
+the cleaning to the OS by adding a profile in `Cargo.toml`:
+```toml
+[profile.release]
+panic = 'abort'
+```
+
+```rust
+fn main() {
+    panic!("crash and burn");
+}
+```
+
+The output will be:
+```
+$ cargo run
+   Compiling panic v0.1.0 (file:///projects/panic)
+    Finished dev [unoptimized + debuginfo] target(s) in 0.25s
+     Running `target/debug/panic`
+thread 'main' panicked at 'crash and burn', src/main.rs:2:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
+```
+
+By default the backtrace will not be printed, we can enable it with `RUST_BACKTRACE=1`:
+```
+RUST_BACKTRACE=1 cargo run
+```
+

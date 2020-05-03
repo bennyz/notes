@@ -2390,3 +2390,208 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 This might be useful when calling another crate's `main`.
 
+we can use traits to make input validation more sane:
+```rust
+pub struct Guess {
+    value: i32,
+}
+
+impl Guess {
+    pub fn new(value: i32) -> Guess {
+        if value < 1 || value > 100 {
+            panic!("Guess value must be between 1 and 100, got {}.", value);
+        }
+
+        Guess { value }
+    }
+
+    pub fn value(&self) -> i32 {
+        self.value
+    }
+}
+```
+
+This is in reference to the guessing game. Having to check this multiple time can get pretty ugly pretty fast.
+Instead using `Guess::new()` would make it more reusable and clear.
+
+
+## Generic Types, Traits, and Lifetimes
+
+Generics allow us to run the same code on different concrete values (just like in other language, looking at you Java!).
+We have already seen many types taking advantage of them: `Option<T>`, `Result<T, E>`, `HashMap<K, V>` and more.
+
+### Generic Data Types
+
+To use generics in a method we can do:
+```rust
+fn largest<T>(list: &[T]) -> T {
+```
+
+It means this two functions:
+```rust
+fn largest_i32(list: &[i32]) -> i32 {
+    let mut largest = list[0];
+
+    for &item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+
+    largest
+}
+
+fn largest_char(list: &[char]) -> char {
+    let mut largest = list[0];
+
+    for &item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+
+    largest
+}
+
+fn main() {
+    let number_list = vec![34, 50, 25, 100, 65];
+
+    let result = largest_i32(&number_list);
+    println!("The largest number is {}", result);
+
+    let char_list = vec!['y', 'm', 'a', 'q'];
+
+    let result = largest_char(&char_list);
+    println!("The largest char is {}", result);
+}
+```
+Could be rewritten with with `fn largest<T>(list: &[T]) -> T {`
+
+It would initially fail with:
+```
+binary operation `>` cannot be applied to type `T`
+```
+
+To allow the usage of `>` we need to ensure `T` implements `std::cmd::PartialOrd`. More on that later.
+
+
+#### Struct Definitions
+
+We can use generics in struct definitions as well:
+```rust
+struct Point<T> {
+    x: T,
+    y: T,
+}
+
+fn main() {
+    let integer = Point { x: 5, y: 10 };
+    let float = Point { x: 1.0, y: 4.0 };
+}
+```
+
+We can't do stuff like this obviously:
+```rust
+struct Point<T> {
+    x: T,
+    y: T,
+}
+
+fn main() {
+    let wont_work = Point { x: 5, y: 4.0 };
+}
+```
+`x` and `y` must be the same type.
+
+If we want to allow different types we can add in another generic parameter:
+```rust
+struct Point<T, U> {
+    x: T,
+    y: U,
+}
+
+fn main() {
+    let both_integer = Point { x: 5, y: 10 };
+    let both_float = Point { x: 1.0, y: 4.0 };
+    let integer_and_float = Point { x: 5, y: 4.0 };
+}
+```
+
+#### In Enum Definitions
+
+We already know of `Option<T>` defined like this:
+```rust
+enum Option<T> {
+    Some(T),
+    None,
+}
+```
+
+#### In Method Definitions
+
+We can use generics in method definitions too using `impl<T>`:
+```rust
+struct Point<T> {
+    x: T,
+    y: T,
+}
+
+impl<T> Point<T> {
+    fn x(&self) -> &T {
+        &self.x
+    }
+}
+
+fn main() {
+    let p = Point { x: 5, y: 10 };
+
+    println!("p.x = {}", p.x());
+}
+```
+
+We can also implement methods only for specific types of `Point<T>`:
+```rust
+impl Point<f32> {
+    fn distance_from_origin(&self) -> f32 {
+        (self.x.powi(2) + self.y.powi(2)).sqrt()
+    }
+}
+```
+
+Instances of `Point<T>` where `T` is not `f32`, will not have this method available.
+
+We can also use different generic parameters than what we have in the struct we are creating the method for:
+```rust
+struct Point<T, U> {
+    x: T,
+    y: U,
+}
+
+impl<T, U> Point<T, U> {
+    fn mixup<V, W>(self, other: Point<V, W>) -> Point<T, W> {
+        Point {
+            x: self.x,
+            y: other.y,
+        }
+    }
+}
+
+fn main() {
+    let p1 = Point { x: 5, y: 10.4 };
+    let p2 = Point { x: "Hello", y: 'c' };
+
+    let p3 = p1.mixup(p2);
+
+    println!("p3.x = {}, p3.y = {}", p3.x, p3.y);
+}
+```
+
+Here `other` can receive a different type than `self`. And we return a new type where `T` is the struct's and
+`W` is `other`'.
+
+The code will print `p3.x = 5, p3.y = c`.
+
+Rust uses *monomorphization*, which means it replaces the generics parameters with the concrete types during
+compilation, thus ensuring there will be no runtime penalty for using them.
+
+

@@ -2595,3 +2595,76 @@ Rust uses *monomorphization*, which means it replaces the generics parameters wi
 compilation, thus ensuring there will be no runtime penalty for using them.
 
 
+### Traits: Defining Shared Behavior
+
+Traits are a similar concept to interfaces in Java, but not exactly. They help us define shared behavior between
+types and define boundries for generic type. For example, std::cmp::PartialOrd to ensure the generic type we choose
+can use the `>` operator.
+
+#### Defining a Trait
+
+To define a trait we use the `trait` keyword:
+```rust
+pub trait Summary {
+    fn summarize(&self) -> String;
+}
+```
+
+This is similar to the interface definition in Java.
+
+To implement the trait for multiple types:
+```rust
+pub struct NewsArticle {
+    pub headline: String,
+    pub location: String,
+    pub author: String,
+    pub content: String,
+}
+
+impl Summary for NewsArticle {
+    fn summarize(&self) -> String {
+        format!("{}, by {} ({})", self.headline, self.author, self.location)
+    }
+}
+
+pub struct Tweet {
+    pub username: String,
+    pub content: String,
+    pub reply: bool,
+    pub retweet: bool,
+}
+
+impl Summary for Tweet {
+    fn summarize(&self) -> String {
+        format!("{}: {}", self.username, self.content)
+    }
+}
+
+```
+
+Here we have two type `NewsArticle` and `Tweet`, and each implements the `Summary` trait.
+To use `summarize` we simply call like any other function:
+```rust
+let tweet = Tweet {
+    username: String::from("horse_ebooks"),
+    content: String::from(
+        "of course, as you probably already know, people",
+    ),
+    reply: false,
+    retweet: false,
+};
+
+tweet.summarize();
+```
+
+To implement an external trait, it is required to first bring it into scope (which requires the trait to be public).
+For example `use crate_name::Summary;`
+
+We can only implement a trait for a type if either of them is local to our crate, for example:
+internal types like `Vec` and traits like `Display` are not local to use, they are both from std lib.
+Otherwise people could break other's implementation by implementing a trait they don't own on a type they don't own,
+this is because Rust would not be able to tell which implementation to use.
+
+#### Default Implementations
+
+

@@ -2667,4 +2667,72 @@ this is because Rust would not be able to tell which implementation to use.
 
 #### Default Implementations
 
+Just like in Java 8+ interfaces, Rust has default implementations for traits.
+Similar to defining a trait we can just add the implementation instead of just specifying the signature:
+```rust
+pub trait Summary {
+    fn summarize(&self) -> String {
+        String::from("(Read more...)")
+    }
+}
+```
+
+To use it we specify an empty `impl` block for `NewsArticle`:
+```rust
+impl Summary for NewsArticle {}
+```
+
+But we can easily call `summarize` on `NewsArticle` despite not having an implementation for it. The default one will be called.
+
+Default implementations methods can call non-default methods:
+```rust
+pub trait Summary {
+    fn summarize_author(&self) -> String;
+
+    fn summarize(&self) -> String {
+        format!("(Read more from {}...)", self.summarize_author())
+    }
+```
+
+To use it we can do:
+```rust
+impl Summary for Tweet {
+    fn summarize_author(&self) -> String {
+        format!("@{}", self.username)
+    }
+}
+```
+
+However, we cannot call the default implementation from an overriding implementation of the same method.
+
+
+#### Traits as Parameters
+
+Like interfaces in Java, we can pass traits as parameters to functions:
+```rust
+pub fn notify(item: impl Summary) {
+    println!("Breaking news! {}", item.summarize());
+}
+```
+
+This lets us call a trait method without relying on a concrete implementation.
+
+#### Trait Bound Syntax
+
+`impl Trait` as parameter is a syntactic sugar for:
+```rust
+pub fn notify<T: Summary>(item: T) {
+    println!("Breaking news! {}", item.summarize());
+}
+```
+
+We can have two parameters implementing `Summary`:
+```rust
+pub fn notify(item1: impl Summary, item2: impl Summary) {
+```
+
+If we want to force both to be the same one we can do:
+```rust
+pub fn notify<T: Summary>(item1: T, item2: T) {
+```
 

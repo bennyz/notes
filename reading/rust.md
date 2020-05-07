@@ -2598,7 +2598,7 @@ compilation, thus ensuring there will be no runtime penalty for using them.
 ### Traits: Defining Shared Behavior
 
 Traits are a similar concept to interfaces in Java, but not exactly. They help us define shared behavior between
-types and define boundries for generic type. For example, std::cmp::PartialOrd to ensure the generic type we choose
+types and define bounds for generic type. For example, std::cmp::PartialOrd to ensure the generic type we choose
 can use the `>` operator.
 
 #### Defining a Trait
@@ -2735,4 +2735,150 @@ If we want to force both to be the same one we can do:
 ```rust
 pub fn notify<T: Summary>(item1: T, item2: T) {
 ```
+
+#### Specifying Multiple Trait Bounds with the + Syntax
+
+We can specify multiple trait bounds if we need a type to implement multiple traits:
+```rust
+pub fn notify(item: impl Summary + Display) {
+```
+
+This would force the passed type to implement both the `Summary` and the `Display` type.
+Can also be specified on generic types:
+```rust
+pub fn notify<T: Summary + Display>(item: T) {
+```
+
+#### Clearer Trait Bounds with where Clauses
+
+Trait bounds for functions with many generic parameters can get messy pretty quick:
+```rust
+fn some_function<T: Display + Clone, U: Clone + Debug>(t: T, u: U) -> i32 {
+```
+
+Instead we can use `where`:
+```rust
+fn some_function<T, U>(t: T, u: U) -> i32
+    where T: Display + Clone,
+          U: Clone + Debug
+{
+```
+Ah, much better!
+
+
+#### Returning Types that Implement Traits
+
+We can return an "interface" from functions:
+```rust
+fn returns_summarizable() -> impl Summary {
+```
+This would allow to return either `Tweet` or `NewsArticle` from `returns_summarizable`, but not both.
+Implementing `returns_summarizable` with code that can return either `Tweet` or `NewsArticle` will fail to compile, but we will see later
+how it is possible to write such function.
+
+
+#### Fixing the largest Function with Trait Bounds
+
+In the previous chapter we had an issue with `largest` function when using a generic instead of implementing it twice for `char` and for `i32`.
+The compiler would not let us do that since the generic parameter may not necessarily implement `std::cmp::PartialOrd` which is required to use
+the `>` operator. Luckily with bounds we can enforce that only types that implement the trait will be accepted:
+```rust
+fn largest<T: PartialOrd>(list: &[T]) -> T {
+    let mut largest = list[0];
+
+    for &item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+
+    largest
+}
+
+```
+
+Rust will still be angry at this:
+```
+2 |     let mut largest = list[0];
+  |                       ^^^^^^^
+  |                       |
+  |                       cannot move out of here
+  |                       move occurs because `list[_]` has type `T`, which does not implement the `Copy` trait
+  |                       help: consider borrowing here: `&list[0]`
+```
+
+`largest = list[0]` will perform a *move*, this will be a problem for vectors with owned types, stack-allocated types like i32 and char
+implement `Copy` and are not moved.
+
+So we can fix it by adding another trait bound:
+```rust
+fn largest<T: PartialOrd + Copy>(list: &[T]) -> T {
+    let mut largest = list[0];
+
+    for &item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+
+    largest
+}
+```
+
+But we won't be able to use vectors of owned types like `String`, if we want to, we can return a reference to &T instead, to avoid giving `largest`
+ownership:
+```rust
+fn largest<T: PartialOrd>(list: &[T]) -> &T {
+    let mut largest = &list[0]; //<-- we borrow &list[0]
+
+    for item in list { // item is now &T and not T
+        if item > largest {
+            largest = &item;
+        }
+    }
+
+    &largest // returning a reference
+}
+```
+
+#### Using Trait Bounds to Conditionally Implement Methods
+
+We can choose to conditionally implement methods based on the concrete type:
+```rust
+
+use std::fmt::Display;
+
+struct Pair<T> {
+    x: T,
+    y: T,
+}
+
+impl<T> Pair<T> {
+    fn new(x: T, y: T) -> Self {
+        Self { x, y }
+    }
+}
+
+impl<T: Display + PartialOrd> Pair<T> {
+    fn cmp_display(&self) {
+        if self.x >= self.y {
+            println!("The largest member is x = {}", self.x);
+        } else {
+            println!("The largest member is y = {}", self.y);
+        }
+    }
+}
+```
+`Pair<T>` implements always implements `new`, but it implements `cmp_display` only if the concrete type `T` implements the traits
+`Display` and `PartialOrd`.
+
+We can conditionally implement for any type that implements a trait:
+```rust
+impl<T: Display> ToString for T {
+    // --snip--
+}
+```
+The standard library implements `ToString` on any type implementing `Display`. This allows us to call `to_string` on any type that can be
+"displayed", like integers.
+
 

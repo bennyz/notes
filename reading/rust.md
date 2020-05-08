@@ -2882,3 +2882,138 @@ The standard library implements `ToString` on any type implementing `Display`. T
 "displayed", like integers.
 
 
+### Validating References with Lifetimes
+
+Just like types are often inferred by the compiler, the lifetimes of references can be inferred as well. But just like with types,
+that is not always the case and sometimes we need to help the compiler.
+
+
+#### Preventing Dangling References with Lifetimes
+
+The main purpose of lifetimes is to prevent dangling pointers
+```rust
+    {
+        let r;
+
+        {
+            let x = 5;
+            r = &x; // r is assigned a reference to x which gets dropped at the end of this block
+        }
+
+        println!("r: {}", r); // here r holds an invalid reference, since it was dropped previously
+    }
+```
+This code would not compile.
+
+How does the compiler knows this code is wrong?
+
+#### The Borrow Checker
+
+The compiler has a *borrow checker*:
+```rust
+    {
+        let r;                // ---------+-- 'a
+                              //          |
+        {                     //          |
+            let x = 5;        // -+-- 'b  |
+            r = &x;           //  |       |
+        }                     // -+       |
+                              //          |
+        println!("r: {}", r); //          |
+    }                         // ---------+
+```
+The `'b` lifetime is much shorter than `'a`. We can fix it by doing:
+```rust
+    {
+        let x = 5;            // ----------+-- 'b
+                              //           |
+        let r = &x;           // --+-- 'a  |
+                              //   |       |
+        println!("r: {}", r); //   |       |
+                              // --+       |
+    }                         // ----------+
+```
+Now `r`'s lifetime `'a` is valid the entire time `x`'s lifetime `'b` is.
+
+
+# Generic Lifetimes in Functions
+
+Consider the example function:
+```rust
+fn get_int_ref() -> &i32 {
+    let a = 1;
+    &a
+}
+```
+
+This will not compile since `a` goes out of scope, and because `get_int_ref` receives no references, the compiler knows that it is created
+inside the function, and as a result we get a dangling pointer to the dropped `a`.
+
+This, for example, will work:
+```rust
+fn get_int_ref(a: &i32) -> &i32 {
+    a
+}
+```
+It works because `a` comes from outside of the function and is valid before the function call due to its wider scope, and as a result
+will remain valid after the function completes.
+
+The Rust compiler automatically assigns the lifetime parameters, so the actual function looks like this:
+```rust
+fn get_int_ref<a'>(a: &'a i32) -> &'a i32 {
+```
+So we don't have to actually specify the lifetime parameters.
+
+It gets complicated if we have the following function:
+```rust
+fn get_int_ref(a: &i32, b: &i32) -> &i32 {
+    if a > b {
+        a
+    }
+
+    b
+}
+```
+
+We would get an error:
+```
+1 | fn get_int_ref(a: &i32, b: &i32) -> &i32 {
+  |                   ----     ----     ^ expected named lifetime parameter
+```
+
+Because this is implicitly converted to:
+```rust
+fn get_int_ref<a', b'>(a: &a' i32, b: &b' i32) -> &i32 {
+```
+
+And __either__ references could be return, the compiler cannot do borrow checking, since it doesn't know whether `a'` or `b'` will be returned
+in this case and cannot guarantee one will not outlive the other.
+
+To fix this, we tell Rust they have the same lifetime:
+```rust
+fn get_int_ref<a'>(a: &a' i32, b: &a' i32) -> &a' i32 {
+    ...
+}
+```
+This way we can guarantee one reference will not outlive the other and the borrow checker can safely validate.
+
+```rust
+fn get_int_ref<a', b'>(a: &a' i32, b: &b' i32) -> &i32 {
+    if a > b {
+        a
+    }
+
+    b
+}
+
+fn main() {
+    let a: i32;                           // -------------+-- 'a
+    let b: i32;                           // -------------+-- 'b
+                                          //              |
+    println!("{}", get_int_ref(&a, &b));  // ----+-- 'c   |
+                                          // -------------+
+}
+
+```
+
+

@@ -3065,3 +3065,200 @@ where
 Since lifetimes are a type generic, they are declared in the same angle brackets as `T`.
 
 
+## Automated Tests
+
+### How to Write Test
+
+```
+   1. Set up any needed data or state.
+   2. Run the code you want to test.
+   3. Assert the results are what you expect.
+```
+
+#### The Anatomy of a Test Function
+
+A test in Rust is a function annotated with `#[test]`. To run tests we use `cargo test`.
+
+Running:
+```shell
+$ cargo new adder --lib
+```
+
+It will generate the following test in `lib.rs`:
+```rust
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
+    }
+}
+```
+
+Rust test can be measured, ignored, filtered. Rust can also test code appearing in the API documentation.
+
+#### Checking Results with the assert! Macro
+
+The `assert!` macro checks whether certain expression evaluates to `true`:
+```rust
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    fn can_hold(&self, other: &Rectangle) -> bool {
+        self.width > other.width && self.height > other.height
+    }
+}
+```
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn larger_can_hold_smaller() {
+        let larger = Rectangle {
+            width: 8,
+            height: 7,
+        };
+        let smaller = Rectangle {
+            width: 5,
+            height: 1,
+        };
+
+        assert!(larger.can_hold(&smaller));
+    }
+}
+```
+
+We have to do `use super::*;` to bring in the parent module into scope.
+
+#### Testing Equality with the assert_eq! and assert_ne! Macros
+
+We don't have to test only boolean values, we can also test equality between objects with the `assert_eq!` and `assert_ne!` macros:
+```rust
+pub fn add_two(a: i32) -> i32 {
+    a + 2
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_adds_two() {
+        assert_eq!(4, add_two(2));
+    }
+}
+```
+
+`assert_ne!` simply does the opposite and checks whether two objects aren't equal.
+
+#### Adding Custom Failure Messages
+
+We can add custom messages to the assert macros to be displayed when the test fails:
+```rust
+#[test]
+fn greeting_contains_name() {
+    let result = greeting("Carol");
+    assert!(
+        result.contains("Carol"),
+        "Greeting did not contain name, value was `{}`",
+        result
+    );
+}
+```
+
+It would display the failure this way:
+```
+---- tests::greeting_contains_name stdout ----
+thread 'main' panicked at 'Greeting did not contain name, value was `Hello!`', src/lib.rs:12:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
+```
+
+#### Checking for Panics with should_panic
+
+We can check if code that is supposed to panic under certain condition does indeed panic with #[should_panic]:
+```rust
+pub struct Guess {
+    value: i32,
+}
+
+impl Guess {
+    pub fn new(value: i32) -> Guess {
+        if value < 1 || value > 100 {
+            panic!("Guess value must be between 1 and 100, got {}.", value);
+        }
+
+        Guess { value }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[should_panic]
+    fn greater_than_100() {
+        Guess::new(200);
+    }
+}
+```
+We can also ensure the failure message is the on we expect with the `expected` attribute:
+```rust
+// --snip--
+impl Guess {
+    pub fn new(value: i32) -> Guess {
+        if value < 1 {
+            panic!(
+                "Guess value must be greater than or equal to 1, got {}.",
+                value
+            );
+        } else if value > 100 {
+            panic!(
+                "Guess value must be less than or equal to 100, got {}.",
+                value
+            );
+        }
+
+        Guess { value }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[should_panic(expected = "Guess value must be less than or equal to 100")]
+    fn greater_than_100() {
+        Guess::new(200);
+    }
+}
+```
+
+#### Using Result<T, E> in Tests
+
+The tests we wrote until now panicked when they failed, but we can also use `Result<T, E>` instead of panicking:
+```rust
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() -> Result<(), String> {
+        if 2 + 2 == 4 {
+            Ok(())
+        } else {
+            Err(String::from("two plus two does not equal four"))
+        }
+    }
+}
+```
+This allows us to use the `?` operator in the body of the test.
+
+

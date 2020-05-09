@@ -3016,4 +3016,52 @@ fn main() {
 
 ```
 
+#### Lifetime Annotations in Struct Definitions
+
+If we want to hold references in structs we are going to have to use the lifetime annotation:
+```rust
+struct ImportantExcerpt<'a> {
+    part: &'a str,
+}
+
+fn main() {
+    let novel = String::from("Call me Ishmael. Some years ago...");
+    let first_sentence = novel.split('.').next().expect("Could not find a '.'");
+    let i = ImportantExcerpt {
+        part: first_sentence,
+    };
+}
+```
+
+This means `ImportantExcerpt` has to live as long as `part` lives.
+
+#### The Static Lifetime
+
+There is special lifetime that is called `'static`, what is special about it is that it lives the entire duration of the program.
+```rust
+let s: &'static str = "I have a static lifetime.";
+```
+This is usually relevant for constants.
+
+```rust
+use std::fmt::Display;
+
+fn longest_with_an_announcement<'a, T>(
+    x: &'a str,
+    y: &'a str,
+    ann: T,
+) -> &'a str
+where
+    T: Display,
+{
+    println!("Announcement! {}", ann);
+    if x.len() > y.len() {
+        x
+    } else {
+        y
+    }
+}
+```
+Since lifetimes are a type generic, they are declared in the same angle brackets as `T`.
+
 

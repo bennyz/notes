@@ -79,6 +79,15 @@ Find directories with exactly two files in them
   find . -maxdepth 1 -type d -exec bash -c "echo -ne '{} '; ls '{}' | wc -l" \; | awk '$NF==2'
 ```
 
+## qemu
+
+Run virtual machine with disk in shell-mode:
+```
+qemu-kvm -hda <path-to-disk> -nographic
+```
+To exit: `ctrl+a, x`
+
+
 ## general (unsorted)
 Read process's output
 ```

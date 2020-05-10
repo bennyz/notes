@@ -3301,3 +3301,28 @@ If we want to run ignored testd we can do:
 $ cargo test -- --ignored
 ```
 
+
+### Test Organization
+
+The Rust convention is to put the tests in the same file as the code under tests.
+The tests are in a separate module called `tests` by convention and marked as `#[cfg(test)]`
+This directive tells Rust not to compile the module during `cargo build`.
+
+
+#### Testing Private Functions
+
+To test private function we need to bring the code under test into the module: `use super::*;`
+
+#### Integration Tests
+
+Integration tests will be under the `tests/` directory next to `src`. Each file under `tests/`
+is compiled is a separate create, so we need to bring each module we test into scope:
+```rust
+use adder;
+
+#[test]
+fn it_adds_two() {
+    assert_eq!(4, adder::add_two(2));
+}
+```
+

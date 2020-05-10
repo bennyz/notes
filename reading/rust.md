@@ -3261,4 +3261,43 @@ mod tests {
 ```
 This allows us to use the `?` operator in the body of the test.
 
+### Controlling How Tests Are Run
+
+#### Running Tests in Parallel or Consecutively
+
+By default tests run in parallel by multiple threads.
+To make sure tests are run sequentially:
+```
+$ cargo test -- --test-threads=1
+```
+
+#### Showing Function Output
+
+Rust captures all standard output in tests, if we want to see the output:
+```
+$ cargo test -- --show-output
+```
+
+#### Running Specific tests
+
+We can pass `cargo test` the name of the test function to make it run only one test:
+```
+$ cargo test one_hundred
+```
+Only one test can be specified this way.
+
+To filter multiple tests we can do:
+```
+$ cargo test add
+```
+This will run all tests with `add` in their name.
+
+#### Ignoring Some Tests Unless Specifically Requested
+
+We can ignore specific tests with the `#[ignore]` annotation.
+
+If we want to run ignored testd we can do:
+```
+$ cargo test -- --ignored
+```
 

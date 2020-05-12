@@ -3326,3 +3326,18 @@ fn it_adds_two() {
 }
 ```
 
+## I/O Project
+
+Get supplied args:
+```rust
+env::args().collect();
+```
+
+Only works with valid UTF-8, for invalid we need to use: `std::env::args_os`
+
+Reading text from file:
+```rust
+fs::read_to_string(filename)
+        .expect("Something went wrong reading the file");
+```
+`read_to_string` return `Result<T, E>` and `expect` unwraps it with a custom message for error, returning the `Ok` value.

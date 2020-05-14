@@ -4,6 +4,33 @@
 ```
   docker rm $(docker ps -qa --filter status=exited)
 ```
+## Getting proper lsblk information
+
+Running `lsblk -f` inside a container won't get us the results we want:
+```
+[root@a9b386ca417d /]# lsblk -f
+NAME                                          FSTYPE FSVER LABEL UUID FSAVAIL FSUSE% MOUNTPOINT
+sda
+├─sda1
+└─sda2
+  └─luks-ec21b293-fb68-44e5-9875-545437969c84
+    ├─fedora-root                                                        9.2G    81% /etc/hosts
+    ├─fedora-swap                                                                    [SWAP]
+    └─fedora-home
+```
+
+Even if mapped we mapped `/dev` and `/sys/block`:
+```
+docker run -v /sys/block:/sys/block -v /dev:/dev -it fedora:32 /bin/bash
+```
+
+`lsblk` seems to read `ID_FS_TYPE` from udev, namely: `/run/udev/data/b8:2` when `8:2` is the major:minor
+of the device.
+
+The solution is to map `/run/udev` to the conainter:
+```
+docker run -v /run/udev:/run/udev -v /dev:/dev -it fedora:32 /bin/bash
+```
 
 # OKD
 

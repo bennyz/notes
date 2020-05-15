@@ -3340,4 +3340,35 @@ Reading text from file:
 fs::read_to_string(filename)
         .expect("Something went wrong reading the file");
 ```
-`read_to_string` return `Result<T, E>` and `expect` unwraps it with a custom message for error, returning the `Ok` value.
+`tread_to_string` return `Result<T, E>` and `expect` unwraps it with a custom message for error, returning the `Ok` value.
+
+We define the search function the following way:
+```rust
+pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+    vec![]
+}
+```
+We have to define a lifetime parameter to tell the compiler which reference we refer to.
+In this case the strings within the returned `Vec` will be slices of `contents`, so only `contents` is annotated with `&'a`.
+
+The standard implementation of `search` would be:
+```rust
+let mut results = Vec::new();
+
+for line in contents.lines() {
+    if line.contains(query) {
+        results.push(line);
+    }
+}
+
+results
+```
+
+Instead we can take advantage of iterators:
+```rust
+    content
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect::<Vec<&str>>
+```
+Ah, so concise!

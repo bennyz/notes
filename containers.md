@@ -27,7 +27,7 @@ docker run -v /sys/block:/sys/block -v /dev:/dev -it fedora:32 /bin/bash
 `lsblk` seems to read `ID_FS_TYPE` from udev, namely: `/run/udev/data/b8:2` when `8:2` is the major:minor
 of the device.
 
-The solution is to map `/run/udev` to the conainter:
+The solution is to map `/run/udev` to the container:
 ```
 docker run -v /run/udev:/run/udev -v /dev:/dev -it fedora:32 /bin/bash
 ```

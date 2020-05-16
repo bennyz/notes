@@ -3385,3 +3385,8 @@ match env::var("VAR_NAME") {
 }
 ```
 
+To print messages to stderr instead of stdout:
+```rust
+eprintln!("Couldn't parse the arguments {}", err);
+```
+

@@ -3372,3 +3372,16 @@ Instead we can take advantage of iterators:
         .collect::<Vec<&str>>
 ```
 Ah, so concise!
+
+Reading environment variables:
+```rust
+use std::env;
+env::var("VAR_NAME").is_err() // is_err will be true if the variable is not set
+// We can also match on it, as it returns Result<T, E>
+
+match env::var("VAR_NAME") {
+    Ok(val) => // ok,
+    Err(e) => // handle error
+}
+```
+

@@ -69,11 +69,11 @@ NAME                                READY   AGE
 statefulset.apps/ovirt-csi-plugin   0/1     2d23h
 ```
 
-`ovirt-csi-plugin` is a pod, that is part of the statefulset, running the controller logic (create volume, delete volume, attach volume...).
-It runs the following containers: csi-external-attacher (triggers ControllerPublish/UnpublishVolume), csi-external-provisioner (mainly for Create/DeleteVolume) and ovirt-csi-driver.
-`ovirt-csi-node` is a daemonset running the csi-driver-registrar (provides information about the driver with GetPluginInfo and GetPluginCapabilities) and ovirt-csi-driver.
+`ovirt-csi-plugin` is a pod, that is part of the StatefulSet, running the controller's logic (create volume, delete volume, attach volume...).
+It runs the following containers: `csi-external-attacher` (triggers ControllerPublish/UnpublishVolume), `csi-external-provisioner` (mainly for Create/DeleteVolume) and `ovirt-csi-driver`.
+`ovirt-csi-node` is a DaemonSet running the `csi-driver-registrar` (provides information about the driver with `GetPluginInfo` and `GetPluginCapabilities`) and `ovirt-csi-driver`.
 
-The sidecar containers (csi-external-attacher, csi-external-provisioner, csi-driver-registrar) run alongside ovirt-csi-driver and run its code via gRPC.
+The sidecar containers (`csi-external-attacher`, `csi-external-provisioner`, `csi-driver-registrar`) run alongside `ovirt-csi-driver` and run its code via gRPC.
 
 Get inside the pods:
 ```

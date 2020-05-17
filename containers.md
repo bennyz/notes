@@ -46,13 +46,15 @@ oc rsh <pod name>
 
 ## OCP on RHV
 
+### CSI
+
 Creation lifecycle:
 1. `CreateVolume` - creates a disk on RHV, return a `Volume` object
 2. `ControllerPublishVolume` - attach the disk to the node (RHV VM)
 3. `NodeStageVolume` - create a file system on the attached disk
 4. `NodePublishVolume` - mount the device
 
-## Troubleshooting ovirt csi driver
+#### Troubleshooting ovirt csi driver
 
 Get all relevant objects for csi driver
 ```

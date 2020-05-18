@@ -3680,4 +3680,64 @@ where
 ```
 TODO: Use generics
 
+#### Capturing the Environment with Closures
+
+Unlike functions, closures can access variables from the scope they're defined in.
+```rust
+fn main() {
+    let x = 4;
+
+    let equal_to_x = |z| z == x;
+
+    let y = 4;
+
+    assert!(equal_to_x(y));
+}
+```
+`x` is not passed to `equal_to_x` nor defined inside of it, but we can still access it.
+
+The same with functions won't work:
+```rust
+fn main() {
+    let x = 4;
+
+    fn equal_to_x(z: i32) -> bool {
+        z == x
+    }
+
+    let y = 4;
+
+    assert!(equal_to_x(y));
+}
+```
+
+Will fail with:
+```
+error[E0434]: can't capture dynamic environment in a fn item
+ --> src/main.rs:5:14
+  |
+5 |         z == x
+  |              ^
+  |
+  = help: use the `|| { ... }` closure form instead
+```
+
+Accessing the environment from closures has memory overhead which is usually unnecessary when using functions, thus they are not
+allowed to this.
+
+Closures access the environment in 3 ways: take ownership, mutable borrow and immutable borrow.
+These options are encoded in traits:
+* `FnOnce` - takes ownership, "Once" means it cannot take ownership more than once
+* `FnMut` - mutable borrow
+* `Fn` - immutable borrow
+This is based on how the compiler infers the closure body.
+
+All closures implement `FnOnce` because they can be called at least once.
+
+`equal_to_x` is `Fn` because it only needs to read `x`.
+We can force ownership by using the `move` keyword:
+```rust
+let equal_to_x = move |z| z == x;
+```
+This is useful with threads when we want the thread to take ownership.
 

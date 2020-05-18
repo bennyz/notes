@@ -3390,3 +3390,294 @@ To print messages to stderr instead of stdout:
 eprintln!("Couldn't parse the arguments {}", err);
 ```
 
+## Functional Language Features: Iterators and Closures
+
+### Closures
+
+Closures are anonymous functions that can be passed around like regular variables.
+
+#### Creating an Abstraction of Behavior with Closures
+
+We want to write a program that generates a workout based on factors, the workout generation is a relatively heavy computation:
+```rust
+use std::thread;
+use std::time::Duration;
+
+fn simulated_expensive_calculation(intensity: u32) -> u32 {
+    println!("calculating slowly...");
+    thread::sleep(Duration::from_secs(2));
+    intensity
+}
+```
+
+The main function calling to `generate_workout`:
+```rust
+fn main() {
+    let simulated_user_specified_value = 10;
+    let simulated_random_number = 7;
+
+    generate_workout(simulated_user_specified_value, simulated_random_number);
+}
+```
+
+Now we can call `simulated_expensive_calculation`:
+```rust
+fn generate_workout(intensity: u32, random_number: u32) {
+    if intensity < 25 {
+        println!(
+            "Today, do {} pushups!",
+            simulated_expensive_calculation(intensity)
+        );
+        println!(
+            "Next, do {} situps!",
+            simulated_expensive_calculation(intensity)
+        );
+    } else {
+        if random_number == 3 {
+            println!("Take a break today! Remember to stay hydrated!");
+        } else {
+            println!(
+                "Today, run for {} minutes!",
+                simulated_expensive_calculation(intensity)
+            );
+        }
+    }
+}
+```
+
+In this case we always use the same intensity, but it doesn't matter.
+
+We also call `simulated_expensive_calculation` multiple times, and that is not good.
+
+#### Refactoring Using Functions
+
+We can it the following way instead:
+```rust
+fn generate_workout(intensity: u32, random_number: u32) {
+    let expensive_result = simulated_expensive_calculation(intensity);
+
+    if intensity < 25 {
+        println!("Today, do {} pushups!", expensive_result);
+        println!("Next, do {} situps!", expensive_result);
+    } else {
+        if random_number == 3 {
+            println!("Take a break today! Remember to stay hydrated!");
+        } else {
+            println!("Today, run for {} minutes!", expensive_result);
+        }
+    }
+}
+```
+
+But... we call the expensive calculation every time! But we don't need this in every if-else clause.
+Instead we can do:
+
+#### Refactoring with Closures to Store Code
+
+```rust
+fn generate_workout(intensity: u32, random_number: u32) {
+    let expensive_closure = |num| {
+        println!("calculating slowly...");
+        thread::sleep(Duration::from_secs(2));
+        num
+    };
+
+    if intensity < 25 {
+        println!("Today, do {} pushups!", expensive_closure(intensity));
+        println!("Next, do {} situps!", expensive_closure(intensity));
+    } else {
+        if random_number == 3 {
+            println!("Take a break today! Remember to stay hydrated!");
+        } else {
+            println!(
+                "Today, run for {} minutes!",
+                expensive_closure(intensity)
+            );
+        }
+    }
+}
+```
+(We again call the expensive computation twice though)
+This is similar to Javascript, Python (even `Function<K, V>` in Java).
+
+#### Closure Type Inference and Annotation
+
+Unlike regular function, closures do not need explicit type annotation on parameters and return values, since they
+are called within a narrow context and the compiler can infer the types from the calls.
+
+It is, however, possible to annotate the types of a closure:
+```rust
+let expensive_closure = |num: u32| -> u32 {
+        println!("calculating slowly...");
+        thread::sleep(Duration::from_secs(2));
+        num
+    };
+```
+
+This is a comparison of function and possible syntax for closures:
+```rust
+fn  add_one_v1   (x: u32) -> u32 { x + 1 }
+let add_one_v2 = |x: u32| -> u32 { x + 1 };
+let add_one_v3 = |x|             { x + 1 };
+let add_one_v4 = |x|               x + 1  ;
+```
+
+However, if we sepcify the closure using v3/v4 we have to use it, otherwise the code will note compile:
+```rust
+let expensive_closure = |num| {
+    println!("calculating slowly...");
+    num
+};
+println!("{}", 2);
+```
+Will fail with:
+```
+  |
+4 |     let expensive_closure = |num| {
+  |                              ^^^ consider giving this closure parameter a type
+```
+
+Since the compiler is unable to infer the type without a calling code.
+The compiler will use the first usage to infer the type, so doing the following will fail as well:
+```rust
+fn main() {
+    let expensive_closure = |num| {
+        println!("calculating slowly...");
+        num
+    };
+
+    println!("{}", expensive_closure(2));
+    println!("{}", expensive_closure("2"));
+}
+```
+```
+error[E0308]: mismatched types
+  --> src/main.rs:10:38
+   |
+10 |     println!("{}", expensive_closure("2"));
+   |                                      ^^^ expected integer, found `&str`
+```
+
+#### Storing Closures Using Generic Parameters and the Fn Traits
+
+Going back to the workout generation program, we still have the problem of running the expensive closure twice.
+What we can do, is hold the closure in a `struct` and lazily evalute it (or: memoization).
+
+We need to use the `Fn` trait to specify the closure. All closures at least one of: `Fn`, `FnMut`, or `FnOnce`.
+So the generic bound in our case would be: `Fn(u32) -> u32`.
+
+Our cache struct will like:
+```rust
+struct Cacher<T>
+where
+    T: Fn(u32) -> u32,
+{
+    calculation: T,
+    value: Option<u32>,
+}
+```
+
+By making `T` bound with `Fn`, we specify it's a closure. So any closure going into the `calculation` field
+will need to have the same signature, receive `u32` and return `u32`.
+
+Note: we can also pass regular functions (without capturing) with `Fn` as function implements it too:
+```rust
+struct Foo<B :Barable> {
+        bar: B,
+        callback: fn(&B),
+    }
+```
+
+The `value` field will hold the calucaltion result. It will be `None` until we called executed `calucaltion`.
+
+To implement the caching we'd do:
+```rust
+impl<T> Cacher<T>
+where
+    T: Fn(u32) -> u32,
+{
+    fn new(calculation: T) -> Cacher<T> {
+        Cacher {
+            calculation,
+            value: None,
+        }
+    }
+
+    fn value(&mut self, arg: u32) -> u32 {
+        match self.value {
+            Some(v) => v,
+            None => {
+                let v = (self.calculation)(arg);
+                self.value = Some(v);
+                v
+            }
+        }
+    }
+}
+```
+
+To use our new `Cacher`:
+```rust
+fn generate_workout(intensity: u32, random_number: u32) {
+    let mut expensive_result = Cacher::new(|num| {
+        println!("calculating slowly...");
+        thread::sleep(Duration::from_secs(2));
+        num
+    });
+
+    if intensity < 25 {
+        println!("Today, do {} pushups!", expensive_result.value(intensity));
+        println!("Next, do {} situps!", expensive_result.value(intensity));
+    } else {
+        if random_number == 3 {
+            println!("Take a break today! Remember to stay hydrated!");
+        } else {
+            println!(
+                "Today, run for {} minutes!",
+                expensive_result.value(intensity)
+            );
+        }
+    }
+}
+```
+
+Here, only the first call to `expensive_result.value()` will perform the calculation and store the result in `value`.
+However this implementation of `Cacher` is wrong, as it assumes we always use the same argument. Using different arguments
+will always return the same result.
+
+So we should use a `HashMap` instead:
+```rust
+struct Cacher<T>
+where
+    T: Fn(u32) -> u32,
+{
+    calculation: T,
+    values: HashMap<u32, u32>,
+}
+
+impl<T> Cacher<T>
+where
+    T: Fn(u32) -> u32,
+{
+    fn new(calculation: T) -> Cacher<T> {
+        Cacher {
+            calculation,
+            values: HashMap::new(),
+        }
+    }
+
+    fn value(&mut self, arg: u32) -> u32 {
+        match self.values.get(&arg) {
+            Some(v) => *v,
+            None => {
+                let val = (self.calculation)(arg);
+                self.values.insert(arg, val);
+                val
+            }
+        }
+    }
+}
+```
+TODO: Use generics
+
+

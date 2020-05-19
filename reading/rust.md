@@ -3741,3 +3741,226 @@ let equal_to_x = move |z| z == x;
 ```
 This is useful with threads when we want the thread to take ownership.
 
+### Processing a Series of Items with Iterators
+
+Iterator allows us to perform tasks on items sequentially. Like in most languages they are lazy, meaning they are not used until they are consumed.
+
+In Rust the `iter()` method usually returns us an iterator. This allows us to iterate with `for ... in ...`
+```rust
+let v1 = vec![1, 2, 3];
+
+let v1_iter = v1.iter();
+```
+
+An iterator saves us the need for using annoying indices.
+
+#### The Iterator Trait and the next Method
+
+Iterators implement the `Iterator` trait from the standard library:
+```rust
+pub trait Iterator {
+    type Item;
+
+    fn next(&mut self) -> Option<Self::Item>;
+
+    // methods with default implementations elided
+}
+```
+`type Item` means we need to define an `Item` type to be used by `next`. The `next()` method is the only one needs to be implemented by an iterator.
+```rust
+#[test]
+fn iterator_demonstration() {
+    let v1 = vec![1, 2, 3];
+
+    let mut v1_iter = v1.iter();
+
+    assert_eq!(v1_iter.next(), Some(&1));
+    assert_eq!(v1_iter.next(), Some(&2));
+    assert_eq!(v1_iter.next(), Some(&3));
+    assert_eq!(v1_iter.next(), None);
+}
+```
+
+`v1_iter` has to be mutable as the calls to `next` consume the iterator and thus are changing it.
+It is not needed when using `for` loops that take ownership as they do this behind the scenes.
+
+```rust
+    let v1 = vec![1, 2, 3];
+
+    let v1_iter = v1.iter();
+
+    for val in v1_iter {
+        println!("Got: {}", val);
+    }
+```
+Here the `for` loop take ownership of `val`, but `val` is reference, so it takes ownership of the reference, not the actual value.
+Same as writing:
+```rust
+for val in &v1 {
+    ...
+}
+```
+
+If we want an iterator to take ownership of the vector and return owned values we can use `into_iter`.
+If we want to iterate over mutable references we can use `iter_mut`.
+
+#### Methods that Consume the Iterator
+
+The `Iterator` has a number of methods implemented, some of these call `next` which is why we are required to implement it.
+The methods calling `next` consume the iterator. One common example is `sum` which calls `next` over and over consuming the entire iterator.
+
+```rust
+#[test]
+fn iterator_sum() {
+    let v1 = vec![1, 2, 3];
+
+    let v1_iter = v1.iter();
+
+    let total: i32 = v1_iter.sum();
+
+    assert_eq!(total, 6);
+}
+```
+
+`v1_iter` can no longer be used after the call to `sum` as it's been consumed.
+
+#### Methods that Produce Other Iterators
+
+Other methods in `Iterator` change the iterator into different kinds of iterator. They are called *iterator adapters*.
+A common example of one is `map` which changes the `Item` into a different one.
+
+```rust
+let v1: Vec<i32> = vec![1, 2, 3];
+
+v1.iter().map(|x| x + 1);
+```
+This calls a closure and produces a new iterator where each value is +1.
+This however does nothing, as iterators are lazy and do anything until consumed by `next`.
+
+So to consume the iterator we have to call a method like `sum` or more appropriately `collect`:
+```rust
+let v1: Vec<i32> = vec![1, 2, 3];
+
+let v2: Vec<_> = v1.iter().map(|x| x + 1).collect();
+
+assert_eq!(v2, vec![2, 3, 4]);
+```
+This will collect the new iterator produced by `map` into a new vector.
+
+#### Using Closures that Capture Their Environment
+
+`filter` is another `Iterator` method that takes a closure producing `true` or `false`. It will either include or exclude a value from the resulting
+iterator based on the result.
+
+```rust
+#[derive(PartialEq, Debug)]
+struct Shoe {
+    size: u32,
+    style: String,
+}
+
+fn shoes_in_my_size(shoes: Vec<Shoe>, shoe_size: u32) -> Vec<Shoe> {
+    shoes.into_iter().filter(|s| s.size == shoe_size).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn filters_by_size() {
+        let shoes = vec![
+            Shoe {
+                size: 10,
+                style: String::from("sneaker"),
+            },
+            Shoe {
+                size: 13,
+                style: String::from("sandal"),
+            },
+            Shoe {
+                size: 10,
+                style: String::from("boot"),
+            },
+        ];
+
+        let in_my_size = shoes_in_my_size(shoes, 10);
+
+        assert_eq!(
+            in_my_size,
+            vec![
+                Shoe {
+                    size: 10,
+                    style: String::from("sneaker")
+                },
+                Shoe {
+                    size: 10,
+                    style: String::from("boot")
+                },
+            ]
+        );
+    }
+}
+```
+
+`shoes.into_iter().filter(|s| s.size == shoe_size).collect()` captures `shoe_size` from the environment.
+By calling `into_iter` we take ownership of the `shoes` vector, and we return a new vector only with the elements which passed the filter,
+the original `shoes` vector is dropped.
+
+
+#### Creating Our Own Iterators with the Iterator Trait
+
+Let's create a counting iterator which will add increase a value by one on each call:
+```rust
+struct Counter {
+    count: u32,
+}
+
+impl Counter {
+    fn new() -> Counter {
+        Counter { count: 0 }
+    }
+}
+
+impl Iterator for Counter {
+    type Item = u32;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.count += 1;
+        Some(self.count)
+    }
+}
+
+fn main() {
+    let mut c = Counter::new();
+    println!("{}", c.next().unwrap());
+    println!("{}", c.next().unwrap());
+    println!("{}", c.next().unwrap());
+}
+```
+We need to set `Item` to `u32` because this is the type we work with, more on that later.
+The problem with the code above is that it will increasing and might reach the max value of `u32`.
+
+We can fix it by changing `next` to:
+```rust
+fn next(&mut self) -> Option<Self::Item> {
+    if self.count < 1000 {
+        self.count += 1;
+        Some(self.count)
+    } else {
+        None
+    }
+}
+
+```
+
+We can also use other methods on our iterator now:
+```rust
+fn main() {
+    let mut c = Counter::new();
+    let sum: u32 = Counter::new()
+            .map(|a| a * 2)
+            .sum();
+    println!("{}", sum);
+}
+```
+

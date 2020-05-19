@@ -76,7 +76,7 @@ Remove all volumes from pool
 ## find
 Find directories with exactly two files in them
 ```
-  find . -maxdepth 1 -type d -exec bash -c "echo -ne '{} '; ls '{}' | wc -l" \; | awk '$NF==2'
+find . -maxdepth 1 -type d -exec bash -c "echo -ne '{} '; ls '{}' | wc -l" \; | awk '$NF==2'
 ```
 
 ## qemu
@@ -91,5 +91,17 @@ To exit: `ctrl+a, x`
 ## general (unsorted)
 Read process's output
 ```
-  cat /proc/<pid>/fd/1
+cat /proc/<pid>/fd/1
 ```
+
+## RPMs
+
+### Build RPM from SRPM
+
+```shell
+$ rpm -i package.src.rpm
+$ cd ~/rpmbuild/SPECS/
+$ dnf builddep package.spec -y
+$ rpmbuild --rebuild package.src.rpm
+```
+

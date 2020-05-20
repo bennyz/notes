@@ -3950,7 +3950,6 @@ fn next(&mut self) -> Option<Self::Item> {
         None
     }
 }
-
 ```
 
 We can also use other methods on our iterator now:
@@ -3963,4 +3962,13 @@ fn main() {
     println!("{}", sum);
 }
 ```
+
+#### I/O project changes
+
+We will pass `std::env::Args` to `Config::new` instead of passing a vector of `&String` which forces us to use `clone()`.
+We also need to change the signature of `Config::new` to: `pub fn new(mut args: env::Args) -> Result<Config, &'static str>`,
+`args` needs to be declared `mut` since calling `next()` on the iterator changes it, and the `mut` has to be in the signature
+since this is where the "variable" is declared.
+
+
 

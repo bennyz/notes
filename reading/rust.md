@@ -3971,4 +3971,106 @@ We also need to change the signature of `Config::new` to: `pub fn new(mut args: 
 since this is where the "variable" is declared.
 
 
+## Smart Pointers
+
+Smart Pointers are pointers that have additional metadata and capabilities.
+In Rust references are pointers that only borrow data, but Smart Pointers, in many cases, own the data.
+Smart Pointers are structs that implement the `Deref` and `Drop` traits.
+
+The common Smart Pointers will be covered:
+* `Box<T>` - allocating values on the heap.
+* `Rc<T>` - reference counting type that enables multiple owners.
+* `Ref<T>` - enforces borrowing rules in runtime instead of compile time.
+
+### Using Box<T> to Point to Data on the Heap
+
+`Box<T>` allows us to store data on the heap rather than on the stack, what remains on the stack is a pointer to the data.
+When would we want to use them?
+
+*    When you have a type whose size can’t be known at compile time and you want to use a value of that type in a context that requires an exact size
+*    When you have a large amount of data and you want to transfer ownership but ensure the data won’t be copied when you do so
+*    When you want to own a value and you care only that it’s a type that implements a particular trait rather than being of a specific type
+
+#### Using a Box<T> to Store Data on the Heap
+
+To store a simple i32 on the heap we'd do:
+```rust
+fn main() {
+    let b = Box::new(5);
+    println!("b = {}", b);
+}
+```
+This is a pointless example though, there is no reason for us to store integers on the heap in most cases.
+
+#### Enabling Recursive Types with Boxes
+
+A more useful example is for types we can't tell the size for in compile time, especially recursive types like a linked list.
+For example, let's define a cons list (construct list from lisp).
+Each item in a cons list contains two elements: the value of the current item and the next item.
+
+We'd try do define it like this:
+```rust
+enum List {
+    Cons(i32, List),
+    Nil,
+}
+```
+
+And use it like this:
+```rust
+use crate::List::{Cons, Nil};
+
+fn main() {
+    let list = Cons(1, Cons(2, Cons(3, Nil)));
+}
+```
+We try to construct the list (1, 2, 3), with the Nil at the end signaling the end of the list.
+But Rust is angry:
+```
+1 | enum List {
+  | ^^^^^^^^^ recursive type has infinite size
+2 |     Cons(i32, List),
+  |               ---- recursive without indirection
+  |
+  = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `List` representable
+```
+
+Rust can't tell how much size to allocate for this type.
+
+#### Computing the Size of a Non-Recursive Type
+```rust
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(i32, i32, i32),
+}
+```
+An enum is type where only one type is used at a time, so Rust only needs to allocate as much space as the largest variant takes,
+in this case `ChangeColor` uses 3 `i32`.
+And unlike in this example, in the cons list, Rust can't tell the size in compile time.
+
+#### Using Box<T> to Get a Recursive Type with a Known Size
+
+By using an "indirection" like the error message suggests, Rust will only store a pointer, rather than the value itself.
+
+```rust
+enum List {
+    Cons(i32, Box<List>),
+    Nil,
+}
+```
+
+And to use it we'd do:
+```rust
+use crate::List::{Cons, Nil};
+
+fn main() {
+    let list = Cons(1, Box::new(Cons(2, Box::new(Cons(3, Box::new(Nil))))));
+}
+```
+
+Since Rust knows how much space a pointer needs we no longer have the problem we had, Rust will allocate the size of i32 + the pointer.
+
+`Box<T>` implements the `Deref` trait which allows values of this type to be treated like references.
 

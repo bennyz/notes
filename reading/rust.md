@@ -2869,7 +2869,7 @@ impl<T: Display + PartialOrd> Pair<T> {
     }
 }
 ```
-`Pair<T>` implements always implements `new`, but it implements `cmp_display` only if the concrete type `T` implements the traits
+`Pair<T>` always implements `new`, but it implements `cmp_display` only if the concrete type `T` implements the traits
 `Display` and `PartialOrd`.
 
 We can conditionally implement for any type that implements a trait:
@@ -3296,7 +3296,7 @@ This will run all tests with `add` in their name.
 
 We can ignore specific tests with the `#[ignore]` annotation.
 
-If we want to run ignored testd we can do:
+If we want to run ignored tests we can do:
 ```
 $ cargo test -- --ignored
 ```
@@ -3522,7 +3522,7 @@ let add_one_v3 = |x|             { x + 1 };
 let add_one_v4 = |x|               x + 1  ;
 ```
 
-However, if we sepcify the closure using v3/v4 we have to use it, otherwise the code will note compile:
+However, if we specify the closure using v3/v4 we have to use it, otherwise the code will note compile:
 ```rust
 let expensive_closure = |num| {
     println!("calculating slowly...");
@@ -3561,7 +3561,7 @@ error[E0308]: mismatched types
 #### Storing Closures Using Generic Parameters and the Fn Traits
 
 Going back to the workout generation program, we still have the problem of running the expensive closure twice.
-What we can do, is hold the closure in a `struct` and lazily evalute it (or: memoization).
+What we can do, is hold the closure in a `struct` and lazily evaluate it (or: memoization).
 
 We need to use the `Fn` trait to specify the closure. All closures at least one of: `Fn`, `FnMut`, or `FnOnce`.
 So the generic bound in our case would be: `Fn(u32) -> u32`.
@@ -3588,7 +3588,7 @@ struct Foo<B :Barable> {
     }
 ```
 
-The `value` field will hold the calucaltion result. It will be `None` until we called executed `calucaltion`.
+The `value` field will hold the calculation result. It will be `None` until we called executed `calucaltion`.
 
 To implement the caching we'd do:
 ```rust

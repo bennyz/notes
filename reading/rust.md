@@ -4273,3 +4273,86 @@ fn main() {
 }
 ```
 
+### `Rc<T>`, the Reference Counted Smart Pointer
+
+There are cases where a single value can have multiple owners. For example, in graphs, multiple edges can point to the same
+node. The node should not be dropped until it has no edges pointing to it.
+To allow multiple ownership Rust has a Smart Pointer `Rc<T>` which is an abbreviation for reference counting.
+It keeps track of the number of references to value, and only when the count reaches zero the value can be dropped.
+
+`Rc<T>` is only for use in single-threaded scenarios since it is not thread-safe.
+
+#### Using `Rc<T>` to Share Data
+
+Going back to the cons list from earlier, we have to following example of two lists merging into a third list:
+```rust
+enum List {
+    Cons(i32, Box<List>),
+    Nil,
+}
+
+use crate::List::{Cons, Nil};
+
+fn main() {
+    let a = Cons(5, Box::new(Cons(10, Box::new(Nil))));
+    let b = Cons(3, Box::new(a));
+    let c = Cons(4, Box::new(a));
+}
+```
+This would fail with:
+```
+error[E0382]: use of moved value: `a`
+  --> src/main.rs:11:30
+   |
+9  |     let a = Cons(5, Box::new(Cons(10, Box::new(Nil))));
+   |         - move occurs because `a` has type `List`, which does not implement the `Copy` trait
+10 |     let b = Cons(3, Box::new(a));
+   |                              - value moved here
+11 |     let c = Cons(4, Box::new(a));
+   |                              ^ value used here after move
+```
+
+It's pretty clear what happens from the error message.
+
+`Rc<T>` comes to the rescue:
+```rust
+use std::rc::Rc;
+use crate::List::{Cons, Nil};
+enum List {
+    Cons(i32, Rc<List>),
+    Nil,
+}
+
+fn main() {
+    let a = Rc::new(Cons(5, Rc::new(Cons(10, Rc::new(Nil)))));
+    let b = Cons(3, Rc::clone(&a));
+    let c = Cons(4, Rc::clone(&a));
+}
+```
+By calling `Rc::clone` we increase the reference count by one, it does not copy any data.
+It also possible to do `a.clone()` but that would be less clear.
+
+#### Cloning an `Rc<T>` Increases the Reference Count
+
+We can see the reference count:
+```rust
+    let a = Rc::new(Cons(5, Rc::new(Cons(10, Rc::new(Nil)))));
+    println!("count after creating a = {}", Rc::strong_count(&a));
+    let b = Cons(3, Rc::clone(&a));
+    println!("count after creating b = {}", Rc::strong_count(&a));
+    {
+        let c = Cons(4, Rc::clone(&a));
+        println!("count after creating c = {}", Rc::strong_count(&a));
+    }
+    println!("count after c goes out of scope = {}", Rc::strong_count(&a));
+}
+```
+This would output:
+```
+count after creating a = 1
+count after creating b = 2
+count after creating c = 3
+count after c goes out of scope = 2
+```
+
+`Rc<T>`is for *immutable references*, allowing *mutable references* would break ownership rules since we could have multiple owners change the same value.

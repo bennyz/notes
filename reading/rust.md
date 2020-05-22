@@ -4200,3 +4200,76 @@ Rust does deref coercion when it finds types and trait implementations in three 
 The first 2 cases are the same and straightforward, convert immutable to immutable and mutable to mutable.
 The first case allows us to convert a mutable reference to an immutable one, but not vice-versa.
 
+#### Running Code on Cleanup with the `Drop` Trait
+
+Another trait for Smart Pointers is `Drop` which gives us control over what happens when a value goes out of scope, (`finalize` in Java, but not really).
+`Box<T>` uses `Drop` to deallocate the space on the heap the box points to.
+
+```rust
+struct CustomSmartPointer {
+    data: String,
+}
+
+impl Drop for CustomSmartPointer {
+    fn drop(&mut self) {
+        println!("Dropping CustomSmartPointer with data `{}`!", self.data);
+    }
+}
+
+fn main() {
+    let c = CustomSmartPointer {
+        data: String::from("my stuff"),
+    };
+    let d = CustomSmartPointer {
+        data: String::from("other stuff"),
+    };
+    println!("CustomSmartPointers created.");
+}
+```
+
+The output will be:
+```
+CustomSmartPointers created.
+Dropping CustomSmartPointer with data `other stuff`!
+Dropping CustomSmartPointer with data `my stuff`!
+```
+Variables are dropped in reverse order of their creation.
+
+#### Dropping a Value Early with `std::mem::drop`
+
+Disabling automatic `drop` isn't straightforward. If we want to drop values manually we have to use `std::mem::drop`.
+This can be useful for Smart Pointers that use locks, allowing us to release locks.
+
+```rust
+fn main() {
+    let c = CustomSmartPointer {
+        data: String::from("some data"),
+    };
+    println!("CustomSmartPointer created.");
+    c.drop();
+    println!("CustomSmartPointer dropped before the end of main.");
+}
+```
+This will fail:
+```
+error[E0040]: explicit use of destructor method
+  --> src/main.rs:16:7
+   |
+16 |     c.drop();
+   |       ^^^^ explicit destructor calls not allowed
+```
+
+This fails because Rust will drop at the end of `main`, which may lead to a *double free*.
+
+So in order to force something to be dropped early we use `std::mem::drop`, which is in the prelude so we can call it like this:
+```rust
+fn main() {
+    let c = CustomSmartPointer {
+        data: String::from("some data"),
+    };
+    println!("CustomSmartPointer created.");
+    drop(c);
+    println!("CustomSmartPointer dropped before the end of main.");
+}
+```
+

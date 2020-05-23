@@ -4356,3 +4356,244 @@ count after c goes out of scope = 2
 ```
 
 `Rc<T>`is for *immutable references*, allowing *mutable references* would break ownership rules since we could have multiple owners change the same value.
+
+### `RefCell<T>` and the Interior Mutability Pattern
+
+*Interior immutability* is a design pattern that allows you to mutate data even in the presence of immutable references to that data.
+This sounds like a violation of the borrowing rules.
+This is made possible by using `unsafe` internally. The borrowing rules will be enforced in runtime, but not by the compiler.
+
+#### Enforcing Borrowing Rules at Runtime with `RefCell<T>`
+
+Unlike `Rc<T>`, `RefCell<T>` represents a single ownership of the data it holds. And unlike `Box<T>` it does not adhere
+to borrowing rules in compile time, only in runtime.
+
+Why is this useful? Rust is not always able to correctly determine that a program is safe, and since the compiler is conservative, it
+might reject a correct program.
+Using `RefCell<T>` is useful whenever we're sure the program is correct but the compiler is unable to understand it.
+
+`RefCell<T>` is single-threaded like `Rc<T>`.
+
+#### Interior Mutability: A Mutable Borrow to an Immutable Value
+
+```rust
+fn main() {
+    let x = 5;
+    let y = &mut x;
+}
+```
+This code will fail since `y` borrows `x` *mutably*, but `x` is immutable.
+An example of where it is useful is when we want a value to appear immutable but still want to mutate it internally, in its methods.
+If we break the borrowing rules, the code will panic in runtime.
+
+#### A Use Case for Interior Mutability: Mock Objects
+
+```rust
+
+pub trait Messenger {
+    fn send(&self, msg: &str);
+}
+
+pub struct LimitTracker<'a, T: Messenger> {
+    messenger: &'a T,
+    value: usize,
+    max: usize,
+}
+
+impl<'a, T> LimitTracker<'a, T>
+where
+    T: Messenger,
+{
+    pub fn new(messenger: &T, max: usize) -> LimitTracker<T> {
+        LimitTracker {
+            messenger,
+            value: 0,
+            max,
+        }
+    }
+
+    pub fn set_value(&mut self, value: usize) {
+        self.value = value;
+
+        let percentage_of_max = self.value as f64 / self.max as f64;
+
+        if percentage_of_max >= 1.0 {
+            self.messenger.send("Error: You are over your quota!");
+        } else if percentage_of_max >= 0.9 {
+            self.messenger
+                .send("Urgent warning: You've used up over 90% of your quota!");
+        } else if percentage_of_max >= 0.75 {
+            self.messenger
+                .send("Warning: You've used up over 75% of your quota!");
+        }
+    }
+}
+```
+
+Now we want to write a test for `LimitTracker` that uses a mock object that tracks the messages sent:
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct mockmessenger {
+        sent_messages: vec<string>,
+    }
+
+    impl mockmessenger {
+        fn new() -> mockmessenger {
+            mockmessenger {
+                sent_messages: vec![],
+            }
+        }
+    }
+
+    impl messenger for mockmessenger {
+        fn send(&self, message: &str) {
+            self.sent_messages.push(string::from(message));
+        }
+    }
+
+    #[test]
+    fn it_sends_an_over_75_percent_warning_message() {
+        let mock_messenger = mockmessenger::new();
+        let mut limit_tracker = limittracker::new(&mock_messenger, 100);
+
+        limit_tracker.set_value(80);
+
+        assert_eq!(mock_messenger.sent_messages.len(), 1);
+    }
+}
+```
+
+But it would fail because `send` calls `push` which mutates the string, `sent_messages`, in this case:
+```
+error[E0596]: cannot borrow `self.sent_messages` as mutable, as it is behind a `&` reference
+  --> src/lib.rs:58:13
+   |
+57 |         fn send(&self, message: &str) {
+   |                 ----- help: consider changing this to be a mutable reference: `&mut self`
+58 |             self.sent_messages.push(String::from(message));
+   |             ^^^^^^^^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+```
+
+If we listen to the compiler and use `fn send(&mut self, message: &str)` it would fail as well, since it no longer matches
+the signature of `Messenger` trait.
+
+Instead, what we can do is use `RefCell`:
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::cell::RefCell;
+
+    struct mockmessenger {
+        sent_messages: RefCell<vec<string>>,
+    }
+
+    impl mockmessenger {
+        fn new() -> mockmessenger {
+            mockmessenger {
+            sent_messages: RefCell::new(vec![]),
+            }
+        }
+    }
+
+    impl messenger for mockmessenger {
+        fn send(&self, message: &str) {
+            self.sent_messages.borrow_mut().push(string::from(message));
+        }
+    }
+
+    #[test]
+    fn it_sends_an_over_75_percent_warning_message() {
+        let mock_messenger = mockmessenger::new();
+        let mut limit_tracker = limittracker::new(&mock_messenger, 100);
+
+        limit_tracker.set_value(80);
+
+        assert_eq!(mock_messenger.sent_messages.borrow().len(), 1);
+    }
+}
+```
+
+In our mock `send` implementation we use `borrow_mut` to unwrap and get a mutable reference.
+In the test however, we only want to read the length of `sent_messages` so we only need to unwrap it with `borrow` to get an immutable reference.
+
+#### Keeping Track of Borrows at Runtime with `RefCell<T>`
+
+`borrow` and `borrow_mut` are somewhat equivalent to `&` and `& mut`. `borrow` returns a Smart Pointer `Ref<T>`, and `borrow_mut` returns `RefMut<T>`.
+Both implement `Deref`, allowing us to treat them like regular references.
+
+`RefCell<T>` keeps track of the amount of active `Ref<T>` and `RefMut<T>` by keeping a sort of a reference count.
+Violating the borrow rules will cause a panic:
+```rust
+impl Messenger for MockMessenger {
+    fn send(&self, message: &str) {
+        let mut one_borrow = self.sent_messages.borrow_mut();
+        let mut two_borrow = self.sent_messages.borrow_mut();
+
+        one_borrow.push(String::from(message));
+        two_borrow.push(String::from(message));
+    }
+}
+```
+The code takes to mutable references, and will fail (in runtime) with:
+```
+thread 'main' panicked at 'already borrowed: BorrowMutError', src/libcore/result.rs:1188:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
+```
+
+#### Having Multiple Owners of Mutable Data by Combining `Rc<T>` and `RefCell<T>`
+
+By using `Rc<T>` and `RefCell<T>` together we can have multiple ownership and mutation, since `Rc<T>` only holds immutable values.
+Going back to the cons list example, we are not able mutate the list after it's created, but adding `RefCell<T>` will let us do it:
+```rust
+#[derive(Debug)]
+enum List {
+    Cons(Rc<RefCell<i32>>, Rc<List>),
+    Nil,
+}
+
+use crate::List::{Cons, Nil};
+use std::cell::RefCell;
+use std::rc::Rc;
+
+fn main() {
+    let value = Rc::new(RefCell::new(5));
+
+    let a = Rc::new(Cons(Rc::clone(&value), Rc::new(Nil)));
+
+    // both refer to list a
+    let b = Cons(Rc::new(RefCell::new(6)), Rc::clone(&a));
+    let c = Cons(Rc::new(RefCell::new(10)), Rc::clone(&a));
+
+    // This does automatic deref
+    // borrow_mut returns `RefMut<T>` and `*` uses its `deref` method
+    *value.borrow_mut() += 10;
+
+    println!("a after = {:?}", a);
+    println!("b after = {:?}", b);
+    println!("c after = {:?}", c);
+}
+```
+
+We also have `Cell<T>` which allows mutability by copying the value:
+```rust
+struct SomeStruct {
+    regular_field: u8,
+    special_field: Cell<u8>,
+}
+
+let my_struct = SomeStruct {
+    regular_field: 0,
+    special_field: Cell::new(1),
+};
+
+let new_value = 100;
+
+my_struct.special_field.set(new_value);
+assert_eq!(my_struct.special_field.get(), new_value);
+```
+We can change the value of `special_field` even though `my_struct` isn't declared as mutable.
+

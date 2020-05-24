@@ -4816,3 +4816,116 @@ leaf strong = 1, weak = 0
 `branch` goes out of scope, its strong reference is zeroed and `leaf`'s strong count is decreased to 1, which means `leaf`'s weak reference is zeroed too
 eventually `leaf` goes out of scope and, the strong count is decreased to 0 and it's dropped.
 
+## Fearless Concurrency
+
+### Using Threads to Run Code Simultaneously
+
+Rust provides only a 1:1 threading model. It used to have green threading, but it was [removed](https://github.com/rust-lang/rfcs/blob/0806be4f282144cfcd55b1d20284b43f87cbe1c6/text/0230-remove-runtime.md) because it requires a runtime, and large runtimes are not very suitable for systems programming.
+
+#### Creating a New Thread with `spawn`
+
+In Rust we create new threads using the `spawn` keyword:
+```rust
+use std::thread;
+use std::time::Duration;
+
+fn main() {
+    thread::spawn(|| {
+        for i in 1..10 {
+            println!("hi number {} from the spawned thread!", i);
+            thread::sleep(Duration::from_millis(1));
+        }
+    });
+
+    for i in 1..5 {
+        println!("hi number {} from the main thread!", i);
+        thread::sleep(Duration::from_millis(1));
+    }
+}
+```
+`spawn` receives a closure with the code to run. The code above will print:
+```
+hi number 1 from the main thread!
+hi number 1 from the spawned thread!
+```
+In an intreleaving manner because of the `sleep`. It also might not print all the number in the `1..10` range because the main thread might finish first.
+
+#### Waiting for All Threads to Finish Using `join` Handles
+
+We can call `join` on the handle returned by `spawn` to block the current thread until the handle's thread finishes.
+```rust
+fn main() {
+    let handle = thread::spawn(|| {
+        for i in 1..10 {
+            println!("hi number {} from the spawned thread!", i);
+            thread::sleep(Duration::from_millis(1));
+        }
+    });
+
+    for i in 1..5 {
+        println!("hi number {} from the main thread!", i);
+        thread::sleep(Duration::from_millis(1));
+    }
+
+    handle.join().unwrap();
+}
+```
+Both threads will run, but the main thread, will wait for the spawned thread to finish before exiting.
+
+If we move the `join` before the main thread loop:
+```rust
+use std::thread;
+use std::time::Duration;
+
+fn main() {
+    let handle = thread::spawn(|| {
+        for i in 1..10 {
+            println!("hi number {} from the spawned thread!", i);
+            thread::sleep(Duration::from_millis(1));
+        }
+    });
+
+    handle.join().unwrap();
+
+    for i in 1..5 {
+        println!("hi number {} from the main thread!", i);
+        thread::sleep(Duration::from_millis(1));
+    }
+}
+```
+The main thread won't run its `println`s until the spawned thread finishes.
+
+#### Using `move` Closures with Threads
+
+If we want to use values from the environment in threads we need to use the `move` keyword.
+```rust
+use std::thread;
+
+fn main() {
+    let v = vec![1, 2, 3];
+
+    let handle = thread::spawn(|| {
+        println!("Here's a vector: {:?}", v);
+    });
+
+    handle.join().unwrap();
+}
+```
+This will fail even though it's fine for regular closures as the thread may outlive the main thread, `v` can be dropped
+while the spawned thread still uses it.
+
+```rust
+use std::thread;
+
+fn main() {
+    let v = vec![1, 2, 3];
+
+    let handle = thread::spawn(move || {
+        println!("Here's a vector: {:?}", v);
+    });
+
+    handle.join().unwrap();
+}
+```
+Instead, we use the `move` keyword to force ownership by of `v` by the thread.
+

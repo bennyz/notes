@@ -4929,3 +4929,153 @@ fn main() {
 ```
 Instead, we use the `move` keyword to force ownership by of `v` by the thread.
 
+### Using Message Passing to Transfer Data Between Threads
+
+Similar to Go, Rust has channels too.
+
+We create a channel the following way:
+```rust
+use std::sync::mpsc;
+
+fn main() {
+    let (tx, rx) = mpsc::channel();
+}
+```
+`mpsc` stands for Multiple Producer, Single Consumer. This means we can have multiple transmitter but only one receiver.
+`tx` being the transmitter and `rx` being the receiver.
+
+```rust
+use std::sync::mpsc;
+use std::thread;
+
+fn main() {
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let val = String::from("hi");
+        tx.send(val).unwrap();
+    });
+}
+```
+The above code spawns a thread the send "hi" on the channel. We use `move` since the thread needs to own `tx` in order to use it.
+To receive the value transmitted we'd use `rx.recv()`
+```rust
+use std::sync::mpsc;
+use std::thread;
+
+fn main() {
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let val = String::from("hi");
+        tx.send(val).unwrap();
+    });
+
+    println!("{}", rx.recv().unwrap());
+}
+```
+`recv` blocks the main thread until a value is available. `recv` return `Result<T, E>`.
+We also have `try_recv` which does not block, but rather immediately returns `Result<T, E>`.
+
+#### Channels and Ownership Transference
+
+```rust
+use std::sync::mpsc;
+use std::thread;
+
+fn main() {
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let val = String::from("hi");
+        tx.send(val).unwrap();
+        println!("val is {}", val);
+    });
+
+    let received = rx.recv().unwrap();
+    println!("Got: {}", received);
+}
+```
+This code will fail:
+```
+error[E0382]: borrow of moved value: `val`
+  --> src/main.rs:10:31
+   |
+8  |         let val = String::from("hi");
+   |             --- move occurs because `val` has type `std::string::String`, which does not implement the `Copy` trait
+```
+Because we transfer ownership of `val` to the receiver and then use it again which is a bad idea, since the value may have been dropped until we get to use it.
+
+#### Sending Multiple Values and Seeing the Receiver Waiting
+
+```rust
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
+
+fn main() {
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let vals = vec![
+            String::from("hi"),
+            String::from("from"),
+            String::from("the"),
+            String::from("thread"),
+        ];
+
+        for val in vals {
+            tx.send(val).unwrap();
+            thread::sleep(Duration::from_secs(1));
+        }
+    });
+
+    for received in rx {
+        println!("Got: {}", received);
+    }
+}
+```
+In this example we send multiple values from one thread to another.
+We're also treating `rx` as an Iterator! We do not have an explicit `recv` here!
+
+#### Creating Multiple Producers by Cloning the Transmitter
+
+```rust
+    let (tx, rx) = mpsc::channel();
+
+    let tx1 = mpsc::Sender::clone(&tx);
+    thread::spawn(move || {
+        let vals = vec![
+            String::from("hi"),
+            String::from("from"),
+            String::from("the"),
+            String::from("thread"),
+        ];
+
+        for val in vals {
+            tx1.send(val).unwrap();
+            thread::sleep(Duration::from_secs(1));
+        }
+    });
+
+    thread::spawn(move || {
+        let vals = vec![
+            String::from("more"),
+            String::from("messages"),
+            String::from("for"),
+            String::from("you"),
+        ];
+
+        for val in vals {
+            tx.send(val).unwrap();
+            thread::sleep(Duration::from_secs(1));
+        }
+    });
+
+    for received in rx {
+        println!("Got: {}", received);
+    }
+```
+The code above actually uses multiple transmitters and in order to transmit from multiple threads, we have to clone the transmitter, since once a
+transmitter moved into a thread, another thread cannot use it.
+

@@ -5079,3 +5079,163 @@ We're also treating `rx` as an Iterator! We do not have an explicit `recv` here!
 The code above actually uses multiple transmitters and in order to transmit from multiple threads, we have to clone the transmitter, since once a
 transmitter moved into a thread, another thread cannot use it.
 
+### Shared-State Concurrency
+
+#### Using Mutexes to Allow Access to Data from One Thread at a Time
+
+A mutex allows only one thread to access data at any time. It is done by acquiring a lock before accessing the data and releasing it when finished.
+
+#### The API of `Mutex<T>`
+
+```rust
+use std::sync::Mutex;
+
+fn main() {
+    let m = Mutex::new(5);
+
+    {
+        let mut num = m.lock().unwrap();
+        *num = 6;
+    }
+
+    println!("m = {:?}", m);
+}
+```
+This piece of code changes the value of `m` to 6. The call to `lock()` may fail if a thread holding the lock panicked.
+`lock()` returns the `MutexGuard` (wrapped in `LockResult`) smart pointer which implements `Deref` allowing us to use `*`.
+`MutexGuard` also implements `Drop`, so when it goes out of scope the lock released.
+
+Only after the lock is dropped the data in the mutex is visible, for example:
+```rust
+use std::sync::Mutex;
+
+fn main() {
+    let m = Mutex::new(5);
+
+    {
+        let mut num = m.lock().unwrap();
+        *num = 6;
+        println!("m = {:?}", m);
+    }
+
+    println!("m = {:?}", m);
+}
+
+```
+This will print:
+```
+m = Mutex { data: <locked> }
+m = Mutex { data: 6 }
+```
+
+#### Sharing a `Mutex<T>` Between Multiple Threads
+
+```rust
+use std::thread;
+use std::sync::Mutex;
+
+fn main() {
+    let counter = Mutex::new(0);
+    let mut handles = vec![];
+
+    for _ in 0..10 {
+        let handle = thread::spawn(move || {
+            let mut num = counter.lock().unwrap();
+
+            *num += 1;
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Result: {}", *counter.lock().unwrap());
+}
+```
+This code tries spawns 10 threads which increase a counter, but fails. Because the mutex, `counter`, is move into the first thread's closure after the first
+iteration of the loop. It can no longer be used by other threads.
+```
+error[E0382]: use of moved value: `counter`
+  --> src/main.rs:9:36
+   |
+5  |     let counter = Mutex::new(0);
+   |         ------- move occurs because `counter` has type `std::sync::Mutex<i32>`, which does not implement the `Copy` trait
+...
+9  |         let handle = thread::spawn(move || {
+   |                                    ^^^^^^^ value moved into closure here, in previous iteration of loop
+10 |             let mut num = counter.lock().unwrap();
+   |                           ------- use occurs due to use in closure
+
+```
+
+#### Multiple Ownership with Multiple Threads
+
+We can try to do multiple ownership with `Rc<T>`:
+```rust
+use std::rc::Rc;
+use std::sync::Mutex;
+use std::thread;
+
+fn main() {
+    let counter = Rc::new(Mutex::new(0));
+    let mut handles = vec![];
+
+    for _ in 0..10 {
+        let counter = Rc::clone(&counter);
+        let handle = thread::spawn(move || {
+            let mut num = counter.lock().unwrap();
+
+            *num += 1;
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Result: {}", *counter.lock().unwrap());
+}
+```
+But this would fail too! As was noted when `Rc<T>` was introduced, it is not thread-safe, and thus Rust want let us share it between threads because the changes
+to the references count safely.
+```
+error[E0277]: `std::rc::Rc<std::sync::Mutex<i32>>` cannot be sent between threads safely
+```
+
+#### Atomic Reference Counting with `Arc<T>`
+
+Arc stands for Atomic Reference Count. `Arc<T>` works similar to `Rc<T>` but uses the concurrency primitives to ensure thread-safety.
+So switching `Rc` to `Arc` will do the trick:
+```rust
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+fn main() {
+    let counter = Arc::new(Mutex::new(0));
+    let mut handles = vec![];
+
+    for _ in 0..10 {
+        let counter = Arc::clone(&counter);
+        let handle = thread::spawn(move || {
+            let mut num = counter.lock().unwrap();
+
+            *num += 1;
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Result: {}", *counter.lock().unwrap());
+}
+```
+
+#### Similarities Between `RefCell<T>`/`Rc<T>` and `Mutex<T>`/`Arc<T>`
+
+`Mutex<T>` offers interior mutability similar. `Mutex<T>` allows us to mutate data inside `Arc<T>` similar to how `RefCell<T>` allows us to mutate data inside `Rc<T>`.
+

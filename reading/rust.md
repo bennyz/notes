@@ -5239,3 +5239,24 @@ fn main() {
 
 `Mutex<T>` offers interior mutability similar. `Mutex<T>` allows us to mutate data inside `Arc<T>` similar to how `RefCell<T>` allows us to mutate data inside `Rc<T>`.
 
+### Extensible Concurrency with the `Sync` and `Send` Traits
+
+There are two concurrency concepts that are part of the Rust language: The `Sync` and `Send` traits.
+
+#### Allowing Transference of Ownership Between Threads with `Send`
+
+The `Send` trait indicates that ownership of the type can be transferred between threads.
+Almost all primitive types are `Send` types, except for raw pointers.
+Any type composed entirely of `Send` types is automatically `Send` as well.
+
+#### Allowing Access from Multiple Threads with `Sync`
+
+`Sync` indicates that it is safe to reference the implementing type from multiple threads.
+`T` is `Sync` if `&T` is `Send`. Primitive types are `Sync` and types composed of `Sync` are `Sync` automatically.
+
+`Mutex<T>` is `Sync`, but `Rc<T>`, `RefCell<T>` are not.
+
+#### Implementing `Send` and `Sync` Manually Is Unsafe
+
+`Send` and `Sync` are marker traits and have no methods to implement. To implement the behavior we would need to use `unsafe`.
+

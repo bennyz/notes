@@ -5260,3 +5260,208 @@ Any type composed entirely of `Send` types is automatically `Send` as well.
 
 `Send` and `Sync` are marker traits and have no methods to implement. To implement the behavior we would need to use `unsafe`.
 
+## Object Oriented Programming Features of Rust
+
+### Characteristics of Object-Oriented Languages
+
+#### Encapsulation that Hides Implementation Details
+
+`pub` allows us to control access to various items.
+
+For example, we allow access to the `AveragedCollection` struct, but not its fields:
+```rust
+pub struct AveragedCollection {
+    list: Vec<i32>,
+    average: f64,
+}
+```
+
+We allow changing the fields only from defined methods:
+```rust
+impl AveragedCollection {
+    pub fn add(&mut self, value: i32) {
+        self.list.push(value);
+        self.update_average();
+    }
+
+    pub fn remove(&mut self) -> Option<i32> {
+        let result = self.list.pop();
+        match result {
+            Some(value) => {
+                self.update_average();
+                Some(value)
+            }
+            None => None,
+        }
+    }
+
+    pub fn average(&self) -> f64 {
+        self.average
+    }
+
+    fn update_average(&mut self) {
+        let total: i32 = self.list.iter().sum();
+        self.average = total as f64 / self.list.len() as f64;
+    }
+}
+```
+Only `add`, `remove`, and `average` can be used to access the data.
+
+### Using Trait Objects That Allow for Values of Different Types
+
+#### Defining a Trait for Common Behavior
+
+To implement a `gui` library we can define a trait `draw`:
+```rust
+pub trait Draw {
+    fn draw(&self);
+}
+```
+Our `gui` will have many components so it will need to hold a list of components implementing `Draw`.
+We can create a vector of trait objects by specifying a pointer (`&` or a smart pointer) and the `dyn` keyword. This will be explained in depth later.
+
+Now we'll define the `Screen` struct that will hold the components:
+```rust
+pub struct Screen {
+    pub components: Vec<Box<dyn Draw>>,
+}
+```
+
+The `components` vector can hold any type implementing `Draw`.
+
+Now we can achieve polymorphism by using the same code on different types.
+```rust
+impl Screen {
+    pub fn run(&self) {
+        for component in self.components.iter() {
+            component.draw();
+        }
+    }
+}
+```
+
+This is different from using a generic type with a trait bound, because a generic parameter can only be substituted with one concrete type at a time.
+```rust
+pub struct Screen<T: Draw> {
+    pub components: Vec<T>,
+}
+
+impl<T> Screen<T>
+where
+    T: Draw,
+{
+    pub fn run(&self) {
+        for component in self.components.iter() {
+            component.draw();
+        }
+    }
+}
+```
+This would only allow us to use a single implementation of `Draw` at a time.
+
+#### Implementing the Trait
+
+We can implement a nice `Button` component
+```rust
+pub struct Button {
+    pub width: u32,
+    pub height: u32,
+    pub label: String,
+}
+
+impl Draw for Button {
+    fn draw(&self) {
+        // code to actually draw a button
+    }
+}
+```
+
+If someone wants to implement another component, `SelectBox` for example:
+```rust
+use gui::Draw;
+
+struct SelectBox {
+    width: u32,
+    height: u32,
+    options: Vec<String>,
+}
+
+impl Draw for SelectBox {
+    fn draw(&self) {
+        // code to actually draw a select box
+    }
+}
+```
+
+Then the user of the library can do:
+```rust
+use gui::{Button, Screen};
+
+fn main() {
+    let screen = Screen {
+        components: vec![
+            Box::new(SelectBox {
+                width: 75,
+                height: 10,
+                options: vec![
+                    String::from("Yes"),
+                    String::from("Maybe"),
+                    String::from("No"),
+                ],
+            }),
+            Box::new(Button {
+                width: 50,
+                height: 10,
+                label: String::from("OK"),
+            }),
+        ],
+    };
+
+    screen.run();
+}
+```
+
+#### Trait Objects Perform Dynamic Dispatch
+
+When using generics we get *monomorphization* and the compiler generates non-generic implementation. The resulted code performs *static dispatch*.
+
+When using trait objects, Rust performs *dynamic dispatch* since the compiler does not know ahead of time the types that will be used. It has to
+lookup the concrete object using the pointer in the trait object, at runtime. So while this offers great flexibility, it has a cost.
+
+#### Object Safety Is Required for Trait Objects
+
+Only *object-safe* traits can be made into trait objects, there are 2 rules:
+* The return type isn't `Self`
+* There are no generic type parameters
+
+`Self` is an alias for the type we're implementing traits or methods on.
+Rust no longer knows the concrete type implementing the trait so `Self` is no longer known.
+Same holds for generic parameters.
+
+If we take a trait returning `Self`, like the standard library `Clone`:
+```rust
+pub trait Clone {
+    fn clone(&self) -> Self;
+}
+```
+
+`String` implements `Clone` as well as `Vec<T>`. The signature of `clone` requires us to know the type implementing to substitute `Self` with it.
+
+If we try to use `Clone` as the trait object in the `components` trait:
+```rust
+pub struct Screen {
+    pub components: Vec<Box<dyn Clone>>,
+}
+```
+
+It would fail with:
+```
+error[E0038]: the trait `std::clone::Clone` cannot be made into an object
+ --> src/lib.rs:2:5
+  |
+2 |     pub components: Vec<Box<dyn Clone>>,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::clone::Clone` cannot be made into an object
+  |
+```
+
+

@@ -5464,4 +5464,187 @@ error[E0038]: the trait `std::clone::Clone` cannot be made into an object
   |
 ```
 
+### Implementing an Object-Oriented Design Pattern
+
+The *state pattern* is an OO pattern where a value has an internal state represented by *state objects*.
+This means the value's behaviour changes based on changes in the internal state. For example, if we have a phone object,
+an `alert()` behaviour would be different based on whether the phone is silenced or not.
+
+We will implement a simplified blog post app:
+```
+   1. A blog post starts as an empty draft.
+   2. When the draft is done, a review of the post is requested.
+   3. When the post is approved, it gets published.
+   4. Only published blog posts return content to print, so unapproved posts can’t accidentally be published.
+   Any other changes attempted on a post should have no effect. For example, if we try to approve a draft blog post before we’ve requested a review, the post should remain an unpublished draft.
+```
+
+
+This will fail since the `blog` crate does not exist yet:
+```rust
+use blog::Post;
+
+fn main() {
+    let mut post = Post::new();
+
+    post.add_text("I ate a salad for lunch today");
+    assert_eq!("", post.content());
+
+    post.request_review();
+    assert_eq!("", post.content());
+
+    post.approve();
+    assert_eq!("I ate a salad for lunch today", post.content());
+}
+```
+Only after the post is approved its content will be printed.
+The `Post` type needs two have 3 states: Draft, Waiting for Review and Published.
+The behavior of `content()` and other operations will change based on the the state of `Post`.
+
+#### Defining `Post` and Creating a New Instance in the Draft State
+
+`src/lib.rs`:
+```rust
+pub struct Post {
+    state: Option<Box<dyn State>>,
+    content: String,
+}
+
+impl Post {
+    pub fn new() -> Post {
+        Post {
+            state: Some(Box::new(Draft {})),
+            content: String::new(),
+        }
+    }
+}
+
+trait State {}
+
+struct Draft {}
+
+impl State for Draft {}
+```
+Since `state` can hold different types, it has to be defined as a trait object.
+
+#### Storing the Text of the Post Content
+
+We'll implement `add_text` for post to mutate `content`:
+```rust
+impl Post {
+    // --snip--
+    pub fn add_text(&mut self, text: &str) {
+        self.content.push_str(text);
+    }
+}
+```
+This does not interact with `state` however.
+
+#### Ensuring the Content of a Draft Post Is Empty
+
+```rust
+impl Post {
+    // --snip--
+    pub fn content(&self) -> &str {
+        ""
+    }
+}
+```
+Even after `content` has changed, we want to return an empty string if the `Post` is in `Draft` state.
+
+#### Requesting a Review of the Post Changes Its State
+
+```rust
+impl Post {
+    // --snip--
+    pub fn request_review(&mut self) {
+        if let Some(s) = self.state.take() {
+            self.state = Some(s.request_review())
+        }
+    }
+}
+
+trait State {
+    fn request_review(self: Box<Self>) -> Box<dyn State>;
+}
+
+struct Draft {}
+
+impl State for Draft {
+    fn request_review(self: Box<Self>) -> Box<dyn State> {
+        Box::new(PendingReview {})
+    }
+}
+
+struct PendingReview {}
+
+impl State for PendingReview {
+    fn request_review(self: Box<Self>) -> Box<dyn State> {
+        self
+    }
+}
+```
+
+`request_review` removes the current state with `Option<T>#take()` and places a new state instead.
+When `request_review` is called on a `Post` in `Draft` state, it will move into a `PendingReview` state, by putting the `Pending` state instead.
+
+`request_review` is defined with a signature accepting a `Box<Self>` - this means the method is only valid when called on a `Box` holding type.
+This also takes ownership of the state, invalidating the previous state.
+
+By using `Option<T>#take` we move the old state out of the struct and leave `None` instead, then we replace `None` with the result of `request_review`.
+We want ownership of in this case, to ensure `Post` does not used the old state.
+
+The `request_review` implementation for `PendingReview` does not do anything, so it just returns itself.
+
+#### Adding the `approve` Method that Changes the Behavior of `content`
+
+```rust
+
+impl Post {
+    // --snip--
+    pub fn approve(&mut self) {
+        if let Some(s) = self.state.take() {
+            self.state = Some(s.approve())
+        }
+    }
+}
+
+trait State {
+    fn request_review(self: Box<Self>) -> Box<dyn State>;
+    fn approve(self: Box<Self>) -> Box<dyn State>;
+}
+
+struct Draft {}
+
+impl State for Draft {
+    // --snip--
+    fn approve(self: Box<Self>) -> Box<dyn State> {
+        self
+    }
+}
+
+struct PendingReview {}
+
+impl State for PendingReview {
+    // --snip--
+    fn approve(self: Box<Self>) -> Box<dyn State> {
+        Box::new(Published {})
+    }
+}
+
+struct Published {}
+
+impl State for Published {
+    fn request_review(self: Box<Self>) -> Box<dyn State> {
+        self
+    }
+
+    fn approve(self: Box<Self>) -> Box<dyn State> {
+        self
+    }
+}
+```
+
+`approve` is similar to `request_review`. When we want to tranisition from `PendingReview` to `Published`, we call `approve`. If we call `approve`
+on a `Post` in `Draft` state, it will do nothing, same as for published.
 

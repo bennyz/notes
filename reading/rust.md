@@ -5499,7 +5499,7 @@ fn main() {
 ```
 Only after the post is approved its content will be printed.
 The `Post` type needs two have 3 states: Draft, Waiting for Review and Published.
-The behavior of `content()` and other operations will change based on the the state of `Post`.
+The behavior of `content()` and other operations will change based on the state of `Post`.
 
 #### Defining `Post` and Creating a New Instance in the Draft State
 
@@ -5645,6 +5645,129 @@ impl State for Published {
 }
 ```
 
-`approve` is similar to `request_review`. When we want to tranisition from `PendingReview` to `Published`, we call `approve`. If we call `approve`
+`approve` is similar to `request_review`. When we want to transition from `PendingReview` to `Published`, we call `approve`. If we call `approve`
 on a `Post` in `Draft` state, it will do nothing, same as for published.
+
+Now, if the state of `Post` is `Published` we need to return the actual `content`.
+We could do:
+```rust
+impl Post {
+    // --snip--
+    pub fn content(&self) -> &str {
+        self.state.as_ref().unwrap().content(self)
+    }
+    // --snip--
+}
+```
+We want a reference and not ownership of the content, so we use `as_ref`, it would returns us `Option<&Box<dyn State>>`
+`as_ref` in this case, Converts from `&Option<T>` to `Option<&T>`. Since the `content` method is implemented for `&self` rather than `self`,
+we need to perform this conversion. Once we have `&Box<dyn State>`, deref coercion takes effect so we get `&State` (whatever the concrete type is).
+And for this we'll have to add `content()` to the trait definition:
+
+```rust
+trait State {
+    // --snip--
+    fn content<'a>(&self, post: &'a Post) -> &'a str {
+        ""
+    }
+}
+
+// --snip--
+struct Published {}
+
+impl State for Published {
+    // --snip--
+    fn content<'a>(&self, post: &'a Post) -> &'a str {
+        &post.content
+    }
+}
+```
+This adds a default implementation for `content`, since only `Published` state needs to have a different behavior.
+We need to specify a lifetime because we have 2 parameters and we need to tell the compiler the return value needs to live as long as the `Post`.
+
+#### Trade-offs of the State Pattern
+
+While the state object pattern adds quite a lot of flexibility it has downsides, such as making it difficult to add new states that will require
+changes in the transition logic.
+
+We also have quite a lot of repetition with the `approve` and `request_review` states. We could alleviate the repetition with macros.
+
+#### Encoding States and Behavior as Types
+
+```rust
+
+pub struct Post {
+    content: String,
+}
+
+pub struct DraftPost {
+    content: String,
+}
+
+impl Post {
+    pub fn new() -> DraftPost {
+        DraftPost {
+            content: String::new(),
+        }
+    }
+
+    pub fn content(&self) -> &str {
+        &self.content
+    }
+}
+
+impl DraftPost {
+    pub fn add_text(&mut self, text: &str) {
+        self.content.push_str(text);
+    }
+}
+```
+Here we define a different type for a `Post` in `Draft` state, `DraftPost`. This will allow us to have compile-time guarantees about
+the different states.
+Now all `Post`s start as drafts and you can only add text to drafts.
+
+#### Implementing Transitions as Transformations into Different Types
+
+```rust
+impl DraftPost {
+    // --snip--
+    pub fn request_review(self) -> PendingReviewPost {
+        PendingReviewPost {
+            content: self.content,
+        }
+    }
+}
+
+pub struct PendingReviewPost {
+    content: String,
+}
+
+impl PendingReviewPost {
+    pub fn approve(self) -> Post {
+        Post {
+            content: self.content,
+        }
+    }
+}
+```
+
+Now we add another type, `PendingReviewPost`, which we transition to from `DraftPost` by invoking `request_review`.
+
+Now the states and transitions are part of the type system, but we have to change our `main`:
+```rust
+use blog::Post;
+
+fn main() {
+    let mut post = Post::new();
+
+    post.add_text("I ate a salad for lunch today");
+
+    let post = post.request_review();
+
+    let post = post.approve();
+
+    assert_eq!("I ate a salad for lunch today", post.content());
+}
+```
+We also cannot assert on `content` as we no longer have access to it before it is approved.
 

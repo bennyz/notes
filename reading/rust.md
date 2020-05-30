@@ -5771,3 +5771,369 @@ fn main() {
 ```
 We also cannot assert on `content` as we no longer have access to it before it is approved.
 
+## Pattern Matching
+```
+A pattern consists of some combination of the following:
+
+    Literals
+    Destructured arrays, enums, structs, or tuples
+    Variables
+    Wildcards
+    Placeholders
+```
+
+### All the Places Patterns Can Be Used
+
+#### `match` Arms
+
+```
+match VALUE {
+    PATTERN => EXPRESSION,
+    PATTERN => EXPRESSION,
+    PATTERN => EXPRESSION,
+}
+```
+
+`match` arms are exhaustive, all possible values need to be accounted for.
+We have the `_` pattern that will match anything, similar to `default` in Java.
+
+#### Conditional `if let` Expressions
+
+Here we have a mix of `if let` with `else-if`:
+```rust
+fn main() {
+    let favorite_color: Option<&str> = None;
+    let is_tuesday = false;
+    let age: Result<u8, _> = "34".parse();
+
+    if let Some(color) = favorite_color {
+        println!("Using your favorite color, {}, as the background", color);
+    } else if is_tuesday {
+        println!("Tuesday is green day!");
+    } else if let Ok(age) = age { //Ok(age) shadows age
+        if age > 30 {
+            println!("Using purple as the background color");
+        } else {
+            println!("Using orange as the background color");
+        }
+    } else {
+        println!("Using blue as the background color");
+    }
+}
+```
+
+Unlike `match`, `if let` is not exhaustive.
+
+#### `while let` Conditional Loops
+
+Similar to `if let`, there's `while let`:
+```rust
+let mut stack = Vec::new();
+
+stack.push(1);
+stack.push(2);
+stack.push(3);
+
+while let Some(top) = stack.pop() {
+    println!("{}", top);
+}
+```
+
+#### `for` Loops
+
+Here we demonstrate how a `for` loop break apart a tuple return by `enumerate`:
+```rust
+let v = vec!['a', 'b', 'c'];
+
+for (index, value) in v.iter().enumerate() {
+    println!("{} is at index {}", value, index);
+}
+```
+
+#### `let` Statements
+
+We have similar destructuring with simple `let` statements:
+```rust
+let (x, y, z) = (1, 2, 3);
+
+// This fails:
+let (x, y) = (1, 2, 3);
+```
+
+#### Function Parameters
+
+```rust
+fn print_coordinates(&(x, y): &(i32, i32)) {
+    println!("Current location: ({}, {})", x, y);
+}
+
+fn main() {
+    let point = (3, 5);
+    print_coordinates(&point);
+}
+```
+
+### Refutability: Whether a Pattern Might Fail to Match
+
+There are two types of patterns, *refutable* and *irrefutable*.
+`let` and `for` statements only accept *irrefutable* patterns as there is nothing to do when there is no match.
+`if let` and `while let` accept both, but warn against *irrefutable* because pointless to use a conditional with
+a pattern that never fails.
+
+```rust
+if let x = 5 {
+    println!("{}", x);
+};
+```
+
+### Pattern Syntax
+
+#### Matching Named Variables
+
+Declaring variables as part of a pattern inside `match` will shadow variables with the same
+name declared outside:
+```rust
+let x = Some(5);
+let y = 10;
+
+match x {
+    Some(50) => println!("Got 50"),
+    Some(y) => println!("Matched, y = {:?}", y),
+    _ => println!("Default case, x = {:?}", x),
+}
+
+println!("at the end: x = {:?}, y = {:?}", x, y);
+```
+Will print:
+```
+Matched, y = 5
+at the end: x = Some(5), y = 10
+```
+This is because in `Some(y)`, `y` is a new variable, binded to whatever `Some(x)` has which is 5.
+
+#### Multiple Patterns
+
+```rust
+let x = 1;
+
+match x {
+    1 | 2 => println!("one or two"),
+    3 => println!("three"),
+    _ => println!("anything"),
+}
+```
+
+#### Matching Ranges of Values with `..=`
+
+```rust
+let x = 5;
+
+match x {
+    1..=5 => println!("one through five"),
+    _ => println!("something else"),
+}
+```
+
+```rust
+let x = 'c';
+
+match x {
+    'a'..='j' => println!("early ASCII letter"),
+    'k'..='z' => println!("late ASCII letter"),
+    _ => println!("something else"),
+}
+```
+
+#### Destructuring to Break Apart Values
+##### Destructuring Structs
+
+```rust
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+fn main() {
+    let p = Point { x: 0, y: 7 };
+
+    let Point { x: a, y: b } = p;
+    assert_eq!(0, a);
+    assert_eq!(7, b);
+}
+```
+This assigns `p.x` and `p.y` to `a` and `b`.
+
+We can also do it directly:
+```rust
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+fn main() {
+    let p = Point { x: 0, y: 7 };
+
+    let Point { x, y } = p;
+    assert_eq!(0, x);
+    assert_eq!(7, y);
+}
+```
+
+We can also match on part of the struct, testing specific values:
+```rust
+fn main() {
+    let p = Point { x: 0, y: 7 };
+
+    match p {
+        Point { x, y: 0 } => println!("On the x axis at {}", x),
+        Point { x: 0, y } => println!("On the y axis at {}", y),
+        Point { x, y } => println!("On neither axis: ({}, {})", x, y),
+    }
+}
+```
+
+#### Destructuring Enums
+
+```rust
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(i32, i32, i32),
+}
+
+fn main() {
+    let msg = Message::ChangeColor(0, 160, 255);
+
+    match msg {
+        Message::Quit => {
+            println!("The Quit variant has no data to destructure.")
+        }
+        Message::Move { x, y } => {
+            println!(
+                "Move in the x direction {} and in the y direction {}",
+                x, y
+            );
+        }
+        Message::Write(text) => println!("Text message: {}", text),
+        Message::ChangeColor(r, g, b) => println!(
+            "Change the color to red {}, green {}, and blue {}",
+            r, g, b
+        ),
+    }
+}
+```
+We perform destructuring in `Message::ChangeColor(r, g, b)`.
+
+#### Destructuring Nested Structs and Enums
+
+```rust
+enum Color {
+    Rgb(i32, i32, i32),
+    Hsv(i32, i32, i32),
+}
+
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(Color),
+}
+
+fn main() {
+    let msg = Message::ChangeColor(Color::Hsv(0, 160, 255));
+
+    match msg {
+        Message::ChangeColor(Color::Rgb(r, g, b)) => println!(
+            "Change the color to red {}, green {}, and blue {}",
+            r, g, b
+        ),
+        Message::ChangeColor(Color::Hsv(h, s, v)) => println!(
+            "Change the color to hue {}, saturation {}, and value {}",
+            h, s, v
+        ),
+        _ => (),
+    }
+}
+```
+
+#### Destructuring Structs and Tuples
+
+```rust
+let ((feet, inches), Point { x, y }) = ((3, 10), Point { x: 3, y: -10 });
+```
+
+#### Ignoring an Unused Variable by Starting Its Name with _
+```rust
+fn main() {
+    let _x = 5;
+    let y = 10;
+}
+```
+
+#### Ignoring Remaining Parts of a Value with `..`
+
+```rust
+struct Point {
+    x: i32,
+    y: i32,
+    z: i32,
+}
+
+let origin = Point { x: 0, y: 0, z: 0 };
+
+match origin {
+    Point { x, .. } => println!("x is {}", x),
+}
+```
+
+```rust
+fn main() {
+    let numbers = (2, 4, 8, 16, 32);
+
+    match numbers {
+        (first, .., last) => {
+            println!("Some numbers: {}, {}", first, last);
+        }
+    }
+}
+```
+
+We can't do `(.., second, ..) => {` however.
+
+#### Extra Conditionals with Match Guards
+
+```rust
+    let num = Some(4);
+
+    match num {
+        Some(x) if x < 5 => println!("less than five: {}", x),
+        Some(x) => println!("{}", x),
+        None => (),
+    }
+```
+
+Because the Match Guard fails, it would go into the second arm and print `less than five: 4`.
+
+#### `@` Bindings
+
+```rust
+enum Message {
+    Hello { id: i32 },
+}
+
+let msg = Message::Hello { id: 5 };
+
+match msg {
+    Message::Hello {
+        id: id_variable @ 3..=7,
+    } => println!("Found an id in range: {}", id_variable),
+    Message::Hello { id: 10..=12 } => {
+        println!("Found an id in another range")
+    }
+    Message::Hello { id } => println!("Found some other id: {}", id),
+}
+```
+`@` lets us create a variable to hold the value when we're testing a pattern.
+The example will print: `Found an id in range: 5`.
+

@@ -6137,3 +6137,251 @@ match msg {
 `@` lets us create a variable to hold the value when we're testing a pattern.
 The example will print: `Found an id in range: 5`.
 
+## Advanced Features
+
+### Unsafe Rust
+
+Unsafe Rust is a way to tell the compiler we know what we're doing is safe when it cannot determine it himself.
+It is also required for tasks that are inherently unsafe like interaction with hardware or the OS.
+
+#### Unsafe Superpowers
+
+To use unsafe Rust we use the `unsafe` keyword, it allows us to:
+* Dereference a raw pointer
+* Call an unsafe function or method
+* Access or modify a mutable static variable
+* Implement an unsafe trait
+* Access fields of `union`s
+
+Unsafe does not disable the borrow checker and we still get some degree of safety, even in an unsafe block.
+
+#### Dereferencing a Raw Pointer
+
+As references, raw pointers can be mutable and immutable, `*mut T` and `*const T` respectively.
+
+The main differences from smart pointers:
+
+* Are allowed to ignore the borrowing rules by having both immutable and mutable pointers or multiple mutable pointers to the same location
+* Aren’t guaranteed to point to valid memory
+* Are allowed to be null
+* Don’t implement any automatic cleanup
+
+By not having Rust's memory guarantees, we can get better performance, interface with other languages or the hardware.
+
+The following snippet creates immutable and mutable raw pointers:
+```rust
+let mut num = 5;
+
+let r1 = &num as *const i32; // immutable
+let r2 = &mut num as *mut i32; // mutable
+```
+There is no `unsafe` block because we can create raw pointers in a safe context, but we can't dereference them.
+
+The following block create a raw pointer to an arbitrary memory location (0x012345):
+```rust
+let address = 0x012345usize;
+let r = address as *const i32;
+```
+This is fine as long as we don't try to actually access the location by dereferencing since this might be an invalid location.
+```rust
+  let address = 0x012345usize;
+  let r = address as *const i32;
+  println!("{}",*r);
+```
+This will fail to compile:
+```
+error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block
+ --> src/main.rs:4:17
+  |
+4 |   println!("{}",*r);
+  |                 ^^ dereference of raw pointer
+```
+
+If we want to dereference `r` we need to wrap it with `unsafe {}`.
+
+```rust
+let mut num = 5;
+
+let r1 = &num as *const i32;
+let r2 = &mut num as *mut i32;
+
+unsafe {
+    println!("r1 is: {}", *r1);
+    println!("r2 is: {}", *r2);
+}
+```
+
+#### Calling an Unsafe Function or Method
+```rust
+unsafe fn dangerous() {}
+
+unsafe {
+    dangerous();
+}
+```
+
+Calling an unsafe function/method has to be done in an `unsafe` block
+
+#### Creating a Safe Abstraction over Unsafe Code
+
+Even if a function has `unsafe` code, we don't necessarily want to mark the entire function as `unsafe`.
+`split_at_mut` from the standard library requires some unsafe code. `split_at_mut` splits a mutable slice
+into two at an index:
+```rust
+let mut v = vec![1, 2, 3, 4, 5, 6];
+
+let r = &mut v[..];
+
+let (a, b) = r.split_at_mut(3);
+
+assert_eq!(a, &mut [1, 2, 3]);
+assert_eq!(b, &mut [4, 5, 6]);
+```
+
+An attempt to implement this function without `unsafe`:
+```rust
+fn split_at_mut(slice: &mut [i32], mid: usize) -> (&mut [i32], &mut [i32]) {
+    let len = slice.len();
+
+    assert!(mid <= len);
+
+    (&mut slice[..mid], &mut slice[mid..])
+}
+```
+This will fail to compile as we mutably borrow `slice` twice, and Rust forbids us from doing this:
+```
+error[E0499]: cannot borrow `*slice` as mutable more than once at a time
+ --> src/main.rs:6:30
+  |
+1 | fn split_at_mut(slice: &mut [i32], mid: usize) -> (&mut [i32], &mut [i32]) {
+  |                        - let's call the lifetime of this reference `'1`
+...
+6 |     (&mut slice[..mid], &mut slice[mid..])
+  |     -------------------------^^^^^--------
+  |     |     |                  |
+  |     |     |                  second mutable borrow occurs here
+  |     |     first mutable borrow occurs here
+  |     returning this value requires that `*slice` is borrowed for `'1`
+```
+Because the parts of the slice are not overlapping this is actually OK to do, but Rust does not care because it does not know this.
+
+`unsafe` comes to the rescue:
+```rust
+use std::slice;
+
+fn split_at_mut(slice: &mut [i32], mid: usize) -> (&mut [i32], &mut [i32]) {
+    let len = slice.len();
+    let ptr = slice.as_mut_ptr();
+
+    assert!(mid <= len);
+
+    unsafe {
+        (
+            slice::from_raw_parts_mut(ptr, mid),
+            slice::from_raw_parts_mut(ptr.add(mid), len - mid),
+        )
+    }
+}
+```
+Now we return a tuple of two mutable slices.
+`as_mut_ptr()` gives us access to the raw pointer a slice in consisted of since slices are a length and pointer, so it returns
+us a `*mut i32`.
+
+`slice::from_raw_parts_mut` - Forms a *mutable* slice from a pointer and length. It is unsafe because it has to trust the pointer
+we passed it is a valid memory location.
+`ptr.add()` - calculates the offset from a pointer, we take the original pointer, and calculate the address of its "middle".
+
+So we create a slice from each part of the original slice and return them.
+This function is not unsafe because we ensured we only use valid pointers.
+
+This however, is unsafe because our raw pointer points to a location that is not necessarily safe:
+```rust
+use std::slice;
+
+let address = 0x01234usize;
+let r = address as *mut i32;
+
+let slice: &[i32] = unsafe { slice::from_raw_parts_mut(r, 10000) };
+```
+
+#### Using `extern` Functions to Call External Code
+
+Rust has the `extern` keyword the facilitates the creation and use of FFI (Foreign Function Interface)
+```rust
+extern "C" {
+    fn abs(input: i32) -> i32;
+}
+
+fn main() {
+    unsafe {
+        println!("Absolute value of -3 according to C: {}", abs(-3));
+    }
+}
+```
+Here we use `abs` from C, it has to be called in an `unsafe` block since Rust cannot enforce safety rules on foreign code.
+
+To call Rust code from C we can do:
+```rust
+#[no_mangle]
+pub extern "C" fn call_from_c() {
+    println!("Just called a Rust function from C!");
+}
+```
+`#[no_mangle]` is required to avoid having the compiler change the name of the function in the compilation process.
+This does not require `unsafe`
+
+#### Accessing or Modifying a Mutable Static Variable
+
+```rust
+static HELLO_WORLD: &str = "Hello, world!";
+
+fn main() {
+    println!("name is: {}", HELLO_WORLD);
+}
+```
+
+Constants and immutable static variables differ in that static variables have a fixed location in memory while constants
+are allowed to duplicate their data when used.
+Also, static variables can be mutable, but modifying them is unsafe, since they are globally available we can have data races if
+we allow changing them:
+```rust
+static mut COUNTER: u32 = 0;
+
+fn add_to_count(inc: u32) {
+    unsafe {
+        COUNTER += inc;
+    }
+}
+
+fn main() {
+    add_to_count(3);
+
+    unsafe {
+        println!("COUNTER: {}", COUNTER);
+    }
+}
+```
+
+#### Implementing an Unsafe Trait
+
+A trait is unsafe when at least one methods has an invariant the compiler can't verify.
+```rust
+unsafe trait Foo {
+    // methods go here
+}
+
+unsafe impl Foo for i32 {
+    // method implementations go here
+}
+
+fn main() {}
+```
+
+The compiler automatically implements `Send` and `Sync` for types composed entirely of types implementing them.
+If we implement a type that is not `Send` or `Sync` like raw pointers and we want to mark it as such, we have to use `unsafe`.
+
+#### Accessing Fields of a Union
+
+A `union` is a type where only one field is used a time, it is mostly used to interface with C. We have to use `unsafe` when accessing
+its fields.
+

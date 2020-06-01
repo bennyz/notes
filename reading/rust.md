@@ -6385,3 +6385,40 @@ If we implement a type that is not `Send` or `Sync` like raw pointers and we wan
 A `union` is a type where only one field is used a time, it is mostly used to interface with C. We have to use `unsafe` when accessing
 its fields.
 
+## Advanced Traits
+
+### Specifying Placeholder Types in Trait Definitions with Associated Types
+
+*Associated types* connect a type placeholder with a trait that allow trait method definitions to use it in their signature.
+When a type implements a trait, the placeholder will be swapped with the concrete type.
+
+A common example where an associated type is needed is with Iterators:
+```rust
+pub trait Iterator {
+    type Item;
+
+    fn next(&mut self) -> Option<Self::Item>;
+}
+```
+
+`Item` is a placeholder for the concrete type, and `next()` is using it in its signature.
+```rust
+impl Iterator for Counter {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // --snip--
+```
+
+How is this different from generics?
+```rust
+pub trait Iterator<T> {
+    fn next(&mut self) -> Option<T>;
+}
+```
+
+We would be able to have multiple implementations of Iterator for each type and when using the `next()` method we'd be required to specify
+type annotations to indicate which implementation we want.
+
+That is not the case with associated types as we can only have one implementation.
+

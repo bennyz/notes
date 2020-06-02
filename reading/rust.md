@@ -6422,3 +6422,243 @@ type annotations to indicate which implementation we want.
 
 That is not the case with associated types as we can only have one implementation.
 
+### Default Generic Type Parameters and Operator Overloading
+
+When using generic type parameters we can specify a default concrete type: `<PlaceholderType=ConcreteType>`, this relieves us from having to specify a concrete
+type in the implementor, when the default type is works.
+
+Rust has *operator overloading*, if we want to overload the `+` operator, we can implement `std::ops::Add`:
+```rust
+use std::ops::Add;
+
+#[derive(Debug, PartialEq)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+impl Add for Point {
+    type Output = Point;
+
+    fn add(self, other: Point) -> Point {
+        Point {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+fn main() {
+    assert_eq!(
+        Point { x: 1, y: 0 } + Point { x: 2, y: 3 },
+        Point { x: 3, y: 3 }
+    );
+}
+```
+The `Add` trait is defined the following way:
+```rust
+trait Add<RHS=Self> {
+    type Output;
+
+    fn add(self, rhs: RHS) -> Self::Output;
+}
+```
+
+`RHS` stands for right-hand side, this means RHS will be `Self`, which is the type we're implementing this trait for, `Point` in our example.
+
+If we want RHS to be a different type:
+```rust
+use std::ops::Add;
+
+struct Millimeters(u32);
+struct Meters(u32);
+
+impl Add<Meters> for Millimeters {
+    type Output = Millimeters;
+
+    fn add(self, other: Meters) -> Millimeters {
+        Millimeters(self.0 + (other.0 * 1000))
+    }
+}
+```
+Because we want to add `Meters` to `Millimeters`, we need to specify the generic parameter and perform the correct conversion.
+
+Default type is used:
+
+* To extend a type without breaking existing code
+* To allow customization in specific cases most users won’t need
+
+### Fully Qualified Syntax for Disambiguation: Calling Methods with the Same Name
+
+It is possible to implement trait methods with the same name for the same type:
+```rust
+trait Pilot {
+    fn fly(&self);
+}
+
+trait Wizard {
+    fn fly(&self);
+}
+
+struct Human;
+
+impl Pilot for Human {
+    fn fly(&self) {
+        println!("This is your captain speaking.");
+    }
+}
+
+impl Wizard for Human {
+    fn fly(&self) {
+        println!("Up!");
+    }
+}
+
+impl Human {
+    fn fly(&self) {
+        println!("*waving arms furiously*");
+    }
+}
+```
+
+In this case if we call fly:
+```rust
+fn main() {
+    let person = Human;
+    person.fly();
+}
+```
+It will use the default implementation for the struct and print: `*waving arms furiously*`.
+However, if we were to remove the default implementation it would fail:
+```
+error[E0034]: multiple applicable items in scope
+  --> src/main.rs:26:7
+   |
+26 |     h.fly();
+   |       ^^^ multiple `fly` found
+   |
+note: candidate #1 is defined in an impl of the trait `Pilot` for the type `Human`
+  --> src/main.rs:12:5
+   |
+12 |     fn fly(&self) {
+   |     ^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `Wizard` for the type `Human`
+  --> src/main.rs:18:5
+   |
+18 |     fn fly(&self) {
+   |     ^^^^^^^^^^^^^
+help: disambiguate the method call for candidate #1
+   |
+26 |     Pilot::fly(&h);
+   |     ^^^^^^^^^^^^^^
+help: disambiguate the method call for candidate #2
+   |
+26 |     Wizard::fly(&h);
+   |     ^^^^^^^^^^^^^^^
+
+```
+When two types in the same scope implement that trait, Rust can’t figure out which type you mean unless you use fully qualified syntax.
+
+
+```rust
+trait Animal {
+    fn baby_name() -> String;
+}
+
+struct Dog;
+
+impl Dog {
+    fn baby_name() -> String {
+        String::from("Spot")
+    }
+}
+
+impl Animal for Dog {
+    fn baby_name() -> String {
+        String::from("puppy")
+    }
+}
+
+fn main() {
+    println!("A baby dog is called a {}", Dog::baby_name());
+}
+```
+
+We would get: `A baby dog is called a Spot`
+
+If we want `puppy`, we'd have to do:
+```rust
+fn main() {
+    println!("A baby dog is called a {}", <Animal as Dog>::baby_name());
+}
+```
+```rust
+<Type as Trait>::function(receiver_if_method, next_arg, ...);
+```
+
+### Using Supertraits to Require One Trait’s Functionality Within Another Trait
+
+If we want to use a trait's functionality in another trait, we can use `Trait: SuperTrait`:
+```rust
+use std::fmt;
+
+trait OutlinePrint: fmt::Display {
+    fn outline_print(&self) {
+        let output = self.to_string();
+        let len = output.len();
+        println!("{}", "*".repeat(len + 4));
+        println!("*{}*", " ".repeat(len + 2));
+        println!("* {} *", output);
+        println!("*{}*", " ".repeat(len + 2));
+        println!("{}", "*".repeat(len + 4));
+    }
+}
+```
+In this case `OutlinePrint` relies on `fmt::Display`'s `to_string`.
+
+This for example will fail to compile:
+```rust
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+impl OutlinePrint for Point {}
+```
+```
+error[E0277]: `Point` doesn't implement `std::fmt::Display`
+```
+To fix it, we'd need to implement `fmt::Display` for `Point`:
+```rust
+use std::fmt;
+
+impl fmt::Display for Point {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+```
+
+### Using the Newtype Pattern to Implement External Traits on External Types
+
+If we want to implement `Display` on `Vec<T>`, which is forbidden since neither are local to our crate, we can use a *newtype*,
+which is a wrapper for our type:
+```rust
+use std::fmt;
+
+struct Wrapper(Vec<String>);
+
+impl fmt::Display for Wrapper {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{}]", self.0.join(", "))
+    }
+}
+
+fn main() {
+    let w = Wrapper(vec![String::from("hello"), String::from("world")]);
+    println!("w = {}", w);
+}
+```
+This however would not give `Wrapper` access to all `Vec<T>`'s methods.
+If we want access we can implement `Deref` on `Wrapper.
+

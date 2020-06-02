@@ -6660,5 +6660,5 @@ fn main() {
 }
 ```
 This however would not give `Wrapper` access to all `Vec<T>`'s methods.
-If we want access we can implement `Deref` on `Wrapper.
+If we want access we can implement `Deref` on `Wrapper`.
 

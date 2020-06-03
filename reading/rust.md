@@ -6422,7 +6422,7 @@ type annotations to indicate which implementation we want.
 
 That is not the case with associated types as we can only have one implementation.
 
-### Default Generic Type Parameters and Operator Overloading
+#### Default Generic Type Parameters and Operator Overloading
 
 When using generic type parameters we can specify a default concrete type: `<PlaceholderType=ConcreteType>`, this relieves us from having to specify a concrete
 type in the implementor, when the default type is works.
@@ -6596,7 +6596,7 @@ fn main() {
 <Type as Trait>::function(receiver_if_method, next_arg, ...);
 ```
 
-### Using Supertraits to Require One Trait’s Functionality Within Another Trait
+#### Using Supertraits to Require One Trait’s Functionality Within Another Trait
 
 If we want to use a trait's functionality in another trait, we can use `Trait: SuperTrait`:
 ```rust
@@ -6639,7 +6639,7 @@ impl fmt::Display for Point {
 }
 ```
 
-### Using the Newtype Pattern to Implement External Traits on External Types
+#### Using the Newtype Pattern to Implement External Traits on External Types
 
 If we want to implement `Display` on `Vec<T>`, which is forbidden since neither are local to our crate, we can use a *newtype*,
 which is a wrapper for our type:

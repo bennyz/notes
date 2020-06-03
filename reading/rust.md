@@ -6662,3 +6662,71 @@ fn main() {
 This however would not give `Wrapper` access to all `Vec<T>`'s methods.
 If we want access we can implement `Deref` on `Wrapper`.
 
+### Advanced Types
+
+#### Using the Newtype Pattern for Type Safety and Abstraction
+
+Newtype is useful for hiding implementation details and for compile-time type checking.
+
+#### Creating Type Synonyms with Type Aliases
+
+Rust also provides us with a type alias which is giving an existing type another name:
+```rust
+type Kilometers = i32;
+```
+
+However, synonyms will still work fine when combined with type aliases:
+```rust
+type Kilometers = i32;
+
+let x: i32 = 5;
+let y: Kilometers = 5;
+
+println!("x + y = {}", x + y);
+```
+So they are not as good as newtype for compile-time guarantees.
+
+It is useful when we have complicated types likes: `Box<dyn Fn() + Send + 'static>`
+```rust
+type Thunk = Box<dyn Fn() + Send + 'static>;
+
+let f: Thunk = Box::new(|| println!("hi"));
+
+fn takes_long_type(f: Thunk) {
+    // --snip--
+}
+
+fn returns_long_type() -> Thunk {
+    // --snip--
+}
+```
+Much better!
+
+A commonly used alias is:
+```rust
+type Result<T> = std::result::Result<T, std::io::Error>;
+```
+We can do:
+```rust
+pub trait Write {
+    fn write(&mut self, buf: &[u8]) -> Result<usize>;
+    fn flush(&mut self) -> Result<()>;
+
+    fn write_all(&mut self, buf: &[u8]) -> Result<()>;
+    fn write_fmt(&mut self, fmt: fmt::Arguments) -> Result<()>;
+}
+```
+Instead of:
+```rust
+use std::fmt;
+use std::io::Error;
+
+pub trait Write {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, Error>;
+    fn flush(&mut self) -> Result<(), Error>;
+
+    fn write_all(&mut self, buf: &[u8]) -> Result<(), Error>;
+    fn write_fmt(&mut self, fmt: fmt::Arguments) -> Result<(), Error>;
+}
+```
+

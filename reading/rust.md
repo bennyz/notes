@@ -550,6 +550,7 @@ fn calculate_length(s: &String) -> usize {
 
     length
 }
+```
 
 This is an *immutable borrow*, unlike the `append` example.
 Essentially, `s` is a pointer to to `s1`.

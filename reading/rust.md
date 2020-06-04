@@ -6731,3 +6731,73 @@ pub trait Write {
 }
 ```
 
+#### The Never Type that Never Returns
+
+Rust has type named `!`. It is a type that never returns.
+Looking at an example:
+```rust
+let guess = match guess.trim().parse() {
+    Ok(_) => 5,
+    Err(_) => "hello",
+};
+```
+`match` arms have to returns the same type so this example wouldn't compile.
+But if we do what we did back in the guessing game:
+```rust
+let guess: u32 = match guess.trim().parse() {
+    Ok(num) => num,
+    Err(_) => continue,
+};
+```
+`continue` returns `!`, this way the compiler can infer the type of guess is `u32` because `continue` never returns, but rather returns control to the outer loop.
+
+```rust
+impl<T> Option<T> {
+    pub fn unwrap(self) -> T {
+        match self {
+            Some(val) => val,
+            None => panic!("called `Option::unwrap()` on a `None` value"),
+        }
+    }
+}
+```
+`panic!` too returns `!` and this allows us to compile this piece of code.
+
+#### Dynamically Sized Types and the Sized Trait
+
+Rust has *Dynamically Sized Types*. `str` is such a type, but it's not a type we can use (unlike `&str`).
+Because unlike types such as `u8`, `str` does not have a fixed size, so Rust does not know how much memory to allocate for it.
+```rust
+let s1: str = "Hello there!";
+let s2: str = "How's it going?";
+```
+In this case each variable needs a different size allocation, unlike `&str` which consists of a pointer and a number, both of which are fixed size.
+
+Every trait is a dynamically sized type, so we have to put them behind a pointer:
+```rust
+Box<dyn Trait>
+&dyn Trait
+Rc<dyn Trait>
+```
+
+Rust has trait called `Sized` to work with *dynamically sized types*. It is used to determine whether a type's size is known at compile-time. It is added automatically to every type whose size is known at compile-time. It is also adds a generic bound for `Sized` to every generic function:
+```rust
+fn generic<T>(t: T) {
+    // --snip--
+}
+```
+Becomes:
+```rust
+fn generic<T: Sized>(t: T) {
+    // --snip--
+}
+```
+
+By default generic functions only work for sized types, if we want to relax this we can use `?Sized`:
+```rust
+fn generic<T: ?Sized>(t: &T) {
+    // --snip--
+}
+```
+(But it has to be a pointer in this case).
+

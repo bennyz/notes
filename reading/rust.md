@@ -6864,3 +6864,42 @@ fn returns_closure() -> Box<dyn Fn(i32) -> i32> {
 }
 ```
 
+### Macros
+
+Macros are a way of writing code that writes code, there are 3 kinds:
+```
+* Custom #[derive] macros that specify code added with the derive attribute used on structs and enums
+* Attribute-like macros that define custom attributes usable on any item
+* Function-like macros that look like function calls but operate on the tokens specified as their argument
+```
+We've seen macros like `println!`, `vec!` and `panic!`.
+
+To define a macro we use `macro_rules!`.
+`vec!` is defined like this:
+```rust
+
+#[macro_export]
+macro_rules! vec {
+    ( $( $x:expr ),* ) => {
+        {
+            let mut temp_vec = Vec::new();
+            $(
+                temp_vec.push($x);
+            )*
+            temp_vec
+        }
+    };
+}
+```
+`$()` matches any Rust expression and `$x:expr` gives it the name `$x`, the command after `$($x:expr)`, indicates a literal separator that could appear after the `$x`, and `*` matches zero or more.
+
+In `vec![1, 2]` it matches 1 and 2 and the generated code would be:
+```rust
+{
+    let mut temp_vec = Vec::new();
+    temp_vec.push(1);
+    temp_vec.push(2);
+    temp_vec
+}
+```
+

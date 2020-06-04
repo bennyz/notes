@@ -6801,3 +6801,66 @@ fn generic<T: ?Sized>(t: &T) {
 ```
 (But it has to be a pointer in this case).
 
+### Advanced Functions and Closures
+
+#### Function Pointers
+
+Like other languages, Rust allows us to pass function pointers with the `fn` type (unlike `Fn` for closures):
+```rust
+fn add_one(x: i32) -> i32 {
+    x + 1
+}
+
+fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
+    f(arg) + f(arg)
+}
+
+fn main() {
+    let answer = do_twice(add_one, 5);
+
+    println!("The answer is: {}", answer);
+}
+```
+
+Function pointers implement `Fn`, `FnMut` and `FnOnce`, meaning we can always pass a function pointer to a method accepting closures.
+We can't accept closures when interfacing with C because C does not have closures (but has function pointers).
+
+In this example:
+```rust
+let list_of_numbers = vec![1, 2, 3];
+let list_of_strings: Vec<String> =
+        list_of_numbers.iter().map(|i| i.to_string()).collect();
+```
+We can pass a function pointer instead of a closure:
+```rust
+let list_of_numbers = vec![1, 2, 3];
+let list_of_strings: Vec<String> =
+    list_of_numbers.iter().map(ToString::to_string).collect();
+```
+We have to use fully qualified name to avoid ambiguity as many types implement `to_string`, so we want the one implemented for the `ToString` trait which is implement for any type implementing `Display`.
+
+#### Returning Closures
+
+Unlike traits we cannot return closures by returning the concrete type, because they don't have one.
+We can't do this:
+```rust
+fn returns_closure() -> dyn Fn(i32) -> i32 {
+    |x| x + 1
+}
+```
+Rust does know how much space to save for the object:
+```
+error[E0277]: the size for values of type `(dyn std::ops::Fn(i32) -> i32 + 'static)` cannot be known at compilation time
+ --> src/lib.rs:1:25
+  |
+1 | fn returns_closure() -> dyn Fn(i32) -> i32 {
+  |                         ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+```
+
+Instead, we can wrap it with a pointer:
+```rust
+fn returns_closure() -> Box<dyn Fn(i32) -> i32> {
+    Box::new(|x| x + 1)
+}
+```
+

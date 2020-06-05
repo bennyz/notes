@@ -6903,3 +6903,54 @@ In `vec![1, 2]` it matches 1 and 2 and the generated code would be:
 }
 ```
 
+#### Procedural Macros for Generating Code from Attributes
+
+*Procedural macros* accept code as input, operate on it and produce code as an output.
+
+When creating procedural macros their definitions must reside in their own special crate:
+```rust
+use proc_macro;
+
+#[some_attribute]
+pub fn some_name(input: TokenStream) -> TokenStream {
+}
+```
+The incoming `TokenStream` is the source code of the function on which we use the macro, and the output `TokenStream` is the resulting code we generate.
+
+#### How to Write a Custom `derive` Macro
+
+# TODO
+
+#### Attribute-like macros
+
+An example of attribute-like macro:
+```rust
+#[route(GET, "/")]
+fn index() {
+```
+
+```rust
+#[proc_macro_attribute]
+pub fn route(attr: TokenStream, item: TokenStream) -> TokenStream {
+```
+
+In Rocket, for example, it's implemented this way, with `macro_rules!`:
+```rust
+pub fn $name(args: TokenStream, input: TokenStream) -> TokenStream {
+    emit!(attribute::route::route_attribute($method, args, input))
+}
+```
+
+#### Function-like macros
+
+An example for a function-like macro `sql!`:
+```rust
+let sql = sql!(SELECT * FROM posts WHERE id=1);
+```
+
+It would be defined with:
+```rust
+#[proc_macro]
+pub fn sql(input: TokenStream) -> TokenStream {
+```
+

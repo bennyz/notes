@@ -6954,3 +6954,28 @@ It would be defined with:
 pub fn sql(input: TokenStream) -> TokenStream {
 ```
 
+## Final Project
+
+An HTTP request looks like this:
+```
+Method Request-URI HTTP-Version CRLF
+headers CRLF
+message-body
+```
+
+HTTP response have this format:
+```
+HTTP-Version Status-Code Reason-Phrase CRLF
+headers CRLF
+message-body
+```
+
+The `thread::spawn` method looks like this:
+```rust
+pub fn spawn<F, T>(f: F) -> JoinHandle<T>
+    where
+        F: FnOnce() -> T + Send + 'static,
+        T: Send + 'static
+```
+`JoinHandle` is the handle returned for us if we want to wait for the thread using `join()`.
+

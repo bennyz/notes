@@ -94,6 +94,11 @@ Read process's output
 cat /proc/<pid>/fd/1
 ```
 
+Move multiple files at once
+```shell
+$ mv -t DESTINATION SOURCES...
+```
+
 ## RPMs
 
 ### Build RPM from SRPM
@@ -104,4 +109,3 @@ $ cd ~/rpmbuild/SPECS/
 $ dnf builddep package.spec -y
 $ rpmbuild --rebuild package.src.rpm
 ```
-

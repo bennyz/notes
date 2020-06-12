@@ -18,15 +18,13 @@ Sample output:
     offset                            lockspace                                         resource  timestamp  own  gen lver
   00000000 77847bfc-b39c-4406-8377-a9515267318a             b6956d4e-d0e0-4cb1-84f1-373dd661b1b5 0000187302 0001 0018 2
 ```
-
-## Networking
-
-### dmsetup
+## dmsetup
 Remove all dm devices for vg name
 ```
   dmsetup ls | grep my_vg | cut -f1 | xargs dmsetup remove
 ```
 
+## Networking
 
 ### ip
 Remove all firecracker tap interfaces

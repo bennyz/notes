@@ -19,17 +19,30 @@ Sample output:
   00000000 77847bfc-b39c-4406-8377-a9515267318a             b6956d4e-d0e0-4cb1-84f1-373dd661b1b5 0000187302 0001 0018 2
 ```
 
-## dmsetup
+## Networking
+
+### dmsetup
 Remove all dm devices for vg name
 ```
   dmsetup ls | grep my_vg | cut -f1 | xargs dmsetup remove
 ```
 
 
-## ip
+### ip
 Remove all firecracker tap interfaces
 ```
   ip a | grep -oP 'fc-\d{1,2}-tap\d' | sudo xargs -L 1 ip link delete
+```
+
+### nmcli
+
+Change DNS server via `nmcli`:
+```shell
+$ nmcli con mod <connection> ipv4.dns "8.8.8.8 8.8.4.4"
+$ nmcli con mod <connection> ipv4.ignore-auto-dns yes
+# Restart connection
+nmcli con down <connection>
+nmcli con up <connection>
 ```
 
 ## virtualization
@@ -59,7 +72,6 @@ Login to target
 ```
   iscsiadm -m node -T <iqn> -p <portal_ip:port> -l
 ```
-
 
 ## ceph
 Mount cephFS

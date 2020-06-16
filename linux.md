@@ -21,7 +21,7 @@ Sample output:
 ## dmsetup
 Remove all dm devices for vg name
 ```
-  dmsetup ls | grep my_vg | cut -f1 | xargs dmsetup remove
+dmsetup ls | grep my_vg | cut -f1 | xargs dmsetup remove
 ```
 
 ## Networking
@@ -29,7 +29,13 @@ Remove all dm devices for vg name
 ### ip
 Remove all firecracker tap interfaces
 ```
-  ip a | grep -oP 'fc-\d{1,2}-tap\d' | sudo xargs -L 1 ip link delete
+ip a | grep -oP 'fc-\d{1,2}-tap\d' | sudo xargs -L 1 ip link delete
+```
+
+### curl
+Send requests to unix socket:
+```
+curl --unix-socket /tmp/firecracker.sock http://localhost
 ```
 
 ### nmcli

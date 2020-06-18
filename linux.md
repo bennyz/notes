@@ -38,6 +38,11 @@ Send requests to unix socket:
 curl --unix-socket /tmp/firecracker.sock http://localhost
 ```
 
+Pull all files from a git dir into a single a file with yaml separators:
+```
+for x in $(curl https://api.github.com/repos/ovirt/csi-driver-operator/contents/manifests |  jq -M '.[].download_url'); do curl -L $(echo $x | tr -d '"') >> dat && echo "---" >> dat ; done
+```
+
 ### nmcli
 
 Change DNS server via `nmcli`:

@@ -158,65 +158,65 @@ fn five() -> i32 {
 
 ### if-else
 ```rust
-  let number = 3;
+let number = 3;
 
-  if number < 5 {
-    println!("true");
-  } else {
-    println!("false");
-  }
+if number < 5 {
+  println!("true");
+} else {
+  println!("false");
+}
 ```
 
 ```rust
-  let condition = true;
-  let number = if condition {
-    5
-  } else {
-    6
-  }
+let condition = true;
+let number = if condition {
+  5
+} else {
+  6
+}
 
   println!("number: {}", number);
 ```
 
 ### Loops
 ```rust
-  // infinite loop (similar to `for {}` in Go)
-  loop {
-    println!("again");
+// infinite loop (similar to `for {}` in Go)
+loop {
+  println!("again");
+}
+
+// returning values from loops:
+let mut counter = 0;
+
+let result = loop {
+  counter += 1;
+
+  if counter == 10 {
+    break counter * 2; // returns 20
   }
+};
 
-  // returning values from loops:
-  let mut counter = 0;
-
-  let result = loop {
-    counter += 1;
-
-    if counter == 10 {
-      break counter * 2; // returns 20
-    }
-  };
-
-  println!("The result is {}", result);
+println!("The result is {}", result);
 ```
 
 ```rust
-  let mut number = 3;
+let mut number = 3;
 
-  while number != 0 {
-    println!("{}!", number);
+while number != 0 {
+  println!("{}!", number);
 
-    number -= 1;
-  }
+  number -= 1;
+}
 
-  println!("LIFTOFF!!!");
+println!("LIFTOFF!!!");
 ```
 
 ```rust
-  let a = [10, 20, 30, 40, 50];
+let a = [10, 20, 30, 40, 50];
 
-  for element in a.iter() {
-    println!("the value is: {}", element);
-  }
+for element in a.iter() {
+  println!("the value is: {}", element);
+}
 ```
 
 ```rust
@@ -239,11 +239,11 @@ free memory. Instead, Rust uses the ownership system that is verified in compile
 * When the owner goes out of scope, the value will be dropped.
 
 ```rust
-  {                      // s is not valid here, it’s not yet declared
-    let s = "hello";   // s is valid from this point forward
+{                      // s is not valid here, it’s not yet declared
+  let s = "hello";   // s is valid from this point forward
 
-    // do stuff with s
-  }                      // this scope is now over, and s is no longer valid
+  // do stuff with s
+}                      // this scope is now over, and s is no longer valid
 ```
 
 *s* becomes valid when we come into scope and becomes invalid as we leave.
@@ -257,8 +257,8 @@ Ownership applies to values allocated on the heap - unknown size and growable.
 The computer stack frame (within the context of a function) is random access, suppose we have the following allocations:
 
 ```rust
-  let x = 8;
-  let y = 7;
+let x = 8;
+let y = 7;
 
 ```
 
@@ -279,16 +279,16 @@ we can easily "jump" to each value using *start_offset + data_type_size + index*
 ### String
 
 ```rust
-  // This is a string literal (type *&'static str*), it is immutable and is known ahead of time.
-  // It is compiled in the binary, similar to *final String* in Java.
-  let s = "string"
+// This is a string literal (type *&'static str*), it is immutable and is known ahead of time.
+// It is compiled in the binary, similar to *final String* in Java.
+let s = "string"
 
-  // This creates a *String* from a string literal, it is *mutable*, allocated on the heap, and *owned*
-  let s = String::from("string");
+// This creates a *String* from a string literal, it is *mutable*, allocated on the heap, and *owned*
+let s = String::from("string");
 
-  // It can be mutated the following way
-  let mut s = String::from("string");
-  s.push_str(" string"); // "string string"
+// It can be mutated the following way
+let mut s = String::from("string");
+s.push_str(" string"); // "string string"
 ```
 
 When we call `String::from` we request memory from the OS.
@@ -304,8 +304,8 @@ us to explicitly free, unlike unmanaged languages.
 The memory we allocated for `s` is released once we go out of scope, without us doing anything explicit.
 ```rust
   // We push to 5's onto the stack and that is great
-  let x = 5;
-  let y = x;
+let x = 5;
+let y = x;
 ```
 
 ```rust

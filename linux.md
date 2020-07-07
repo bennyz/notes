@@ -120,6 +120,11 @@ Move multiple files at once
 $ mv -t DESTINATION SOURCES...
 ```
 
+Getting IP from DHCP server on kernel boot
+```
+console=ttyS0 noapic reboot=k panic=1 pci=off nomodules rw ip=dhcp
+```
+
 ## RPMs
 
 ### Build RPM from SRPM

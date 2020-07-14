@@ -54,6 +54,13 @@ nmcli con down <connection>
 nmcli con up <connection>
 ```
 
+# tcpdump
+
+Dump DHCP requests/responses:
+```shell
+tcpdump -i fcbridge -pvn port 67 and port 68
+```
+
 ## virtualization
 ### libvirt
 Change default libvirt images location

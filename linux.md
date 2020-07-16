@@ -54,7 +54,7 @@ nmcli con down <connection>
 nmcli con up <connection>
 ```
 
-# tcpdump
+### tcpdump
 
 Dump DHCP requests/responses:
 ```shell

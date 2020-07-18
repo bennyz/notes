@@ -61,6 +61,13 @@ Dump DHCP requests/responses:
 tcpdump -i fcbridge -pvn port 67 and port 68
 ```
 
+### MISC
+
+Send UDP packet
+```shell
+echo "This is my data" > /dev/udp/127.0.0.1/3000
+```
+
 ## virtualization
 ### libvirt
 Change default libvirt images location

@@ -6,7 +6,7 @@
 // inferred
 let x = 5; // immutable
 
-// immutable
+// mutable
 let mut x = 5;
 
 // typed - unsigned int32

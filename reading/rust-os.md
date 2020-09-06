@@ -1,6 +1,7 @@
 ## A minimal Rust kernel
 
-The VGA text buffer is located at address `0xb8000`
+The VGA text buffer is located at address `0xb8000`. It is accessible via memory-mapped I/O (MMIO), By reading and writing to this address, we don't access RAM, but the VGA hardware itself.
+
 ```rust
 static HELLO: &[u8] = b"Hello World!";
 

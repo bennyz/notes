@@ -25,3 +25,7 @@ pub extern "C" fn _start() -> ! {
 Because we use MMIO to access the buffer, we only write to it without reading. This can make Rust optimize and omit the writes since it would think they are unnecessary. To avoid this optmization we can use volatile (similar to how the it works in Java).
 
 In Rust we can use the [volatile](https://docs.rs/volatile/0.3.0/volatile/) package.
+
+### Spinlocks
+
+We cannot use the stdlib mutex since we don't have support for locking in our kernel. Instead we can use spinlocks which just try to lock over and over but don't need kernel support. This can be achieved using the `spin` crate.

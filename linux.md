@@ -139,6 +139,25 @@ Getting IP from DHCP server on kernel boot
 console=ttyS0 noapic reboot=k panic=1 pci=off nomodules rw ip=dhcp
 ```
 
+Creating rootfs with Centos 8 Stream
+```
+# Create rootfs dir
+$ mkosi -t directory -d centos --package vim,dnf,openssh-server,iputils --with-network --mirror=http://mirror.isoc.org.il/pub
+
+# Setup ttyS0:
+See https://www.thegeekdiary.com/centos-rhel-7-how-to-configure-serial-getty-with-systemd/
+
+$ truncate -s 2G centos-rootfs
+$ mkfs.ext4 centos-rootfs
+$ mkdir /mnt/rootfs
+$ mount centos-rootfs /mnt/rootfs/
+$ cp -r image/* /mnt/rootfs/
+$ umount /mnt/rootfs/
+
+# Optional, run firecracker:
+./firectl --kernel=./vmlinux  --root-drive=./crootfs --kernel-opts="console=ttyS0 noapic reboot=k panic=1 pci=off rw ip=dhcp i8042.noaux=0" --firecracker-binary=./firecracker -m=128 --tap-device=fctap/96:af:da:dd:e7:42
+```
+
 ## RPMs
 
 ### Build RPM from SRPM

@@ -142,9 +142,10 @@ console=ttyS0 noapic reboot=k panic=1 pci=off nomodules rw ip=dhcp
 Creating rootfs with Centos 8 Stream
 ```
 # Create rootfs dir
-$ mkosi -t directory -d centos --package vim,dnf,openssh-server,iputils --with-network --mirror=http://mirror.isoc.org.il/pub
+$ mkosi -t directory -d centos --package vim,dnf,openssh-server,iputils --with-network --mirror=http://mirror.isoc.org.il/pub --password password
 
 # Setup ttyS0:
+$ systemd-nspawn -D image
 See https://www.thegeekdiary.com/centos-rhel-7-how-to-configure-serial-getty-with-systemd/
 
 $ truncate -s 2G centos-rootfs

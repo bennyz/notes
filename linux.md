@@ -146,7 +146,7 @@ $ mkosi -t directory -d centos --package vim,dnf,openssh-server,iputils --with-n
 
 # Setup ttyS0:
 $ systemd-nspawn -D image
-See https://www.thegeekdiary.com/centos-rhel-7-how-to-configure-serial-getty-with-systemd/
+# See https://www.thegeekdiary.com/centos-rhel-7-how-to-configure-serial-getty-with-systemd/
 
 $ truncate -s 2G centos-rootfs
 $ mkfs.ext4 centos-rootfs

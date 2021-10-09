@@ -534,7 +534,7 @@ get a compilation error:
 
 So we must return `s`.
 
-However, we just learend how we can lend a value to function without giving up our rightful ownership of it.
+However, we just learned how we can lend a value to function without giving up our rightful ownership of it.
 
 ```rust
 fn main() {

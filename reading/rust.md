@@ -338,7 +338,7 @@ A *String* is made up like this:
 When `s1` is assigned to `s2` we get another structure, similar to the one on the left, only for `s2`.
 The pointer and the metadata are copied, but no the data pointed by the variable!
 
-Since *drop* is called at the end of the block, Rust will attempt to free `s1` and then `s2`, but since the they
+Since *drop* is called at the end of the block, Rust will attempt to free `s1` and then `s2`, but since they
 have a pointer to the same location on the heap, it might free the same memory area twice (*double free*)!
 This leads to undefined behavior which can cause data corruption and security issues.
 
@@ -348,7 +348,7 @@ Rust will *move* the data from `s1` to `s2`, meaning `s1` is no longer valid
 ```rust
 {
   // We will not get two "hello" strings!
-  let s1 = String::from("he");
+  let s1 = String::from("hello");
   let s2 = s1;
 }
 ```

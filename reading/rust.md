@@ -3341,7 +3341,7 @@ Reading text from file:
 fs::read_to_string(filename)
         .expect("Something went wrong reading the file");
 ```
-`tread_to_string` return `Result<T, E>` and `expect` unwraps it with a custom message for error, returning the `Ok` value.
+`read_to_string` retursn `Result<T, E>` and `expect` unwraps it with a custom message for error, returning the `Ok` value.
 
 We define the search function the following way:
 ```rust

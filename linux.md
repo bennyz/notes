@@ -1,7 +1,11 @@
 ## make
 preview make build process
+```shell
+make -n
 ```
-  make -n
+Pass additional compiler flags in `autotools`
+```shell
+./configure CFLAGS=-fPIE
 ```
 
 ## sanlock

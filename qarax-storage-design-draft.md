@@ -18,9 +18,9 @@ This will create a path on the host:
 ```
 
 ### Creating local volumes
-Local volumes are expected to be present and accessible only to a certain host. This means VMs these volumes are attached can only run on these host. To create a new volume, we have arguments to set, such as the storage id, and if the storage is local we need to somehow get that drive to the host: we can add a parameter to the `POST /drives/` request, like `url` which will represent the location the of drive, initially we can support to types of locations, http and local
+Local volumes are expected to be present and accessible only to a certain host. This means VMs with these volumes are attached can only run on these host. To create a new volume, we have arguments to set, such as the storage id, and if the storage is local we need to somehow get that drive to the host: we can add a parameter to the `POST /drives/` request, like `url` which will represent the location the of drive, initially we can support to types of locations, http and local
   1. http: this URL will be downloaded to the host directly and saved in the storage directory
-  2. file: the volume will be in a path on the where request is run, in this case it would need to be uploaded to the host
+  2. file: the volume will be in a path on the host where request is run, in this case it would need to be uploaded to the host
     
 #### Uploading local files
 
@@ -42,8 +42,8 @@ A `size` parameter should also be present, but if a path is specified we should 
 2. By analysing the URI scheme, we see that path is a local file. We then create a new empty file with the provided size (or use the actual file to the determine the size?) in the qarax-node host
 `/home/qarax/storage/local/01199fac-f06a-4240-ba3c-87e0b70f4d4f/<new UUID>`
 3. Start an `nbd` server exporting the created file
-4. Once creation complete (should be quick) we can create an entry in the database
-5. Respond to the user with the details, containing the volume id, and the NBD export the should be mounted
+4. Once creation completes (should be quick) we can create an entry in the database
+5. Respond to the user with the details, containing the volume id, and the NBD export that should be mounted
 6. Perform the upload by copying to the mapped nbd device
 
 ##### Issues

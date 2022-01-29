@@ -33,7 +33,7 @@ If a user wishes to create a local VM drive (created on local storage), by uploa
   "rootfs": true,
   "storage_id": "01199fac-f06a-4240-ba3c-87e0b70f4d4f"
   "size": 1 # GiB
-  "path": "file://bionic.rootfs.ext4" # optional, otherwise an empty drive will be create
+  "path": "file://bionic.rootfs.ext4" # optional, otherwise an empty drive will be created
 }
 ```
 A `size` parameter should also be present, but if a path is specified we should use the file's size

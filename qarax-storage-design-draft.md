@@ -28,8 +28,7 @@ If a user wishes to create a local VM drive (created on local storage), by uploa
 1. The user sends a `POST /drives/` request to qarax with the payload
 ```json
 { 
-  "name":
-  "ubuntu",
+  "name": "ubuntu",
   "readonly": false,
   "rootfs": true,
   "storage_id": "01199fac-f06a-4240-ba3c-87e0b70f4d4f"

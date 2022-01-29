@@ -25,7 +25,7 @@ Local volumes are expected to be present and accessible only to a certain host. 
 #### Uploading local files
 
 If a user wishes to create a local VM drive (created on local storage), by uploading a local file he has containing a file system (to serve as the rootfs of the VM), we need to transfer this file to the qarax-node host. This can be done using the following steps:
-1. Users sends a `POST /drives/` request to qarax with the payload
+1. The user sends a `POST /drives/` request to qarax with the payload
 ```json
 { 
   "name":

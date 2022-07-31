@@ -53,3 +53,6 @@ It's probably possible to set it up with:
               cafile = /root/ca.pem
               EOF
 ```
+
+- Create PV
+- Attach PV to pod with a predictable name
